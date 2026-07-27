@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ Auth ============
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String // hash bcrypt — nunca retornar em responses
+  createdAt DateTime @default(now())
+
+  projects    Project[]
+  notes       Note[]
+  agendaItems AgendaItem[]
+}
+
+// ============ Núcleo ============
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  archived  Boolean  @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  groups        Group[]
+  tasks         Task[]
+  sessions      WorkSession[]
+  notes         Note[]
+  reports       Report[]
+  agendaItems   AgendaItem[]
+  reportProfile ReportProfile?
+}
+
+// Metadados fixos do cabeçalho do relatório semanal — editáveis a qualquer momento
+model ReportProfile {
+  id           String  @id @default(cuid())
+  projectId    String  @unique
+  project      Project @relation(fields: [projectId], references: [id])
+  grupoTurma   String
+  aluno        String
+  ra           String
+  curso        String
+  termo        String
+  orientador   String
+  coorientador String?
+  tema         String
+  area         String
+}
+
+model Group {
+  id        String  @id @default(cuid())
+  name      String
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  tasks     Task[]
+}
+
+enum TaskStatus {
+  BACKLOG
+  EM_ANDAMENTO
+  CONCLUIDO
+  FUTURO // "Feature ou Futuro"
+}
+
+enum TaskPriority {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+model Task {
+  id          String        @id @default(cuid())
+  title       String
+  description String? // mantida atualizada = vira a Justificativa do relatório
+  status      TaskStatus    @default(BACKLOG)
+  priority    TaskPriority  @default(MEDIA)
+  progress    Int           @default(0) // 0-100
+  notes       String?
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id])
+  groupId     String?
+  group       Group?        @relation(fields: [groupId], references: [id])
+  sessions    WorkSession[] @relation("SessionTasks")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Status derivado (não persistido):
+//   startedAt == null                    → Planejada
+//   startedAt != null && endedAt == null → Ativa
+//   startedAt != null && endedAt != null → Concluída
+model WorkSession {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id])
+  plannedFor DateTime? // preenchido quando planejada com antecedência
+  startedAt  DateTime?
+  endedAt    DateTime?
+  notes      String? // markdown livre
+  commits    String? // texto livre: uma linha por commit
+  nextStep   String?
+  tasks      Task[]    @relation("SessionTasks")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  projectId String? // opcional: nota pode ser geral (sem projeto)
+  project   Project? @relation(fields: [projectId], references: [id])
+  userId    String // dono da nota — escopo primário
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  content   String // markdown
+  createdAt DateTime @default(now())
+}
+
+// ============ Agenda (módulo independente) ============
+
+enum AgendaItemType {
+  PRAZO
+  ENTREGA
+  LEMBRETE
+  ANOTACAO
+}
+
+model AgendaItem {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  type        AgendaItemType @default(LEMBRETE)
+  done        Boolean        @default(false)
+  // Opcional — a agenda funciona sozinha: itens pessoais existem sem projeto
+  projectId   String?
+  project     Project?       @relation(fields: [projectId], references: [id])
+  // Vínculo primário é o usuário, não o projeto
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  createdAt   DateTime       @default(now())
+}
+
+// ============ Relatório semanal (fase 2 — schema pronto, sem uso no POC) ============
+
+model Report {
+  id           String       @id @default(cuid())
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id])
+  week         String // ex: "20/2026"
+  generatedAt  DateTime     @default(now())
+  percentTotal Int
+  filePath     String?
+  items        ReportItem[]
+}
+
+enum ReportSection {
+  REALIZADAS
+  PROXIMAS
+}
+
+model ReportItem {
+  id            String        @id @default(cuid())
+  reportId      String
+  report        Report        @relation(fields: [reportId], references: [id])
+  section       ReportSection
+  taskTitle     String
+  status        String // "Concluída" | "Em andamento" | "Em espera"
+  percent       Int?
+  justification String
+}

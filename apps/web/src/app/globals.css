@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/*
+ * Tema DevLog — dark only.
+ * Camadas de cinza dão profundidade (sem sombras); verde lima é o único accent.
+ */
+:root {
+  --background: #0e0f12;
+  --foreground: #e7e9ec;
+
+  --card: #16181d;
+  --card-foreground: #e7e9ec;
+
+  --popover: #1a1d23;
+  --popover-foreground: #e7e9ec;
+
+  --primary: #a3e635; /* verde lima */
+  --primary-foreground: #0e0f12;
+
+  --secondary: #1e2127;
+  --secondary-foreground: #e7e9ec;
+
+  --muted: #1e2127;
+  --muted-foreground: #9aa0aa;
+
+  --accent: #22262d;
+  --accent-foreground: #e7e9ec;
+
+  --destructive: #f87171;
+  --destructive-foreground: #0e0f12;
+
+  --border: #262a31;
+  --input: #262a31;
+  --ring: #a3e635;
+
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+/* Markdown renderizado (notas) — estilos mínimos, sem plugin de tipografia */
+.prose-devlog h1,
+.prose-devlog h2,
+.prose-devlog h3 {
+  font-weight: 600;
+  margin: 0.75em 0 0.35em;
+}
+.prose-devlog h1 { font-size: 1.15em; }
+.prose-devlog h2 { font-size: 1.05em; }
+.prose-devlog p { margin: 0.4em 0; }
+.prose-devlog ul,
+.prose-devlog ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+.prose-devlog ul { list-style: disc; }
+.prose-devlog ol { list-style: decimal; }
+.prose-devlog code {
+  background: var(--secondary);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.9em;
+}
+.prose-devlog pre {
+  background: var(--secondary);
+  border-radius: 6px;
+  padding: 0.75em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.prose-devlog pre code { background: transparent; padding: 0; }
+.prose-devlog a { color: var(--primary); text-decoration: underline; }
+.prose-devlog blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 0.75em;
+  color: var(--muted-foreground);
+  margin: 0.5em 0;
+}
+
+/* Scrollbar discreta, combinando com o tema */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b3038;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #363c46;
+}

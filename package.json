@@ -1,0 +1,13 @@
+{
+  "name": "devlog",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace api",
+    "dev:web": "npm run dev --workspace web",
+    "db:up": "docker compose up -d",
+    "db:migrate": "npm run prisma:migrate --workspace api"
+  }
+}

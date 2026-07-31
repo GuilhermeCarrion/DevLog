@@ -255,6 +255,26 @@
 
 ---
 
+## Deploy — cookie cross-site + guard client-side (30/07/2026)
+
+**Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`
+
+**Contexto:** deploy escolhido = Vercel (web) + Render (api) + Neon (Postgres) — três domínios diferentes, todos em tier grátis. Isso muda a mecânica de autenticação e exigiu ajustes.
+
+**Soluções e conceitos:**
+- *Cookie cross-site*: com web e api em domínios distintos, a request do browser para a api é cross-site. O browser só armazena/reenvia o cookie de sessão com `sameSite: 'none'` + `secure: true` (só sobre HTTPS). Opções agora são env-gated por `NODE_ENV` (`COOKIE_BASE` em `auth.controller.ts`); em dev continua `lax` + inseguro (http local). `clearCookie` usa as mesmas opções, senão o browser não casa e não apaga.
+- *trust proxy*: atrás do proxy da Railway, o Express só reconhece a request como https (e envia o cookie `secure`) com `app.set('trust proxy', 1)`. Sem isso, login não persiste em produção. Exigiu tipar o app como `NestExpressApplication`.
+- *Proteção de rota client-side (AuthGate)*: o middleware do Next foi **removido** — ele roda no domínio da web e nunca veria o cookie, que pertence ao domínio da api. O `AuthGate` consulta `GET /auth/me` (fonte de verdade): `mode="protected"` redireciona ao login se 401; `mode="guest"` manda pra home se já logado. Aplicado nos layouts `(app)` e `(auth)`.
+- *Cache do `me` no login*: `useLogin`/`useRegister` fazem `setQueryData(['me'], user)` no sucesso — sem isso o AuthGate leria o 401 cacheado da tela de login e redirecionaria de volta (bug de cache do React Query).
+- *Dockerfile multi-stage*: build a partir da **raiz** do monorepo (workspaces hoisted). Stage build faz `npm ci` + `prisma generate` + `nest build`; runner roda `prisma migrate deploy && node dist/main`. `openssl` instalado (Prisma engine exige em imagens slim).
+- *Neon pooled + direct*: `schema.prisma` ganhou `directUrl`. Runtime usa a connection string pooled (`DATABASE_URL`), migrations usam a direct (`DIRECT_URL`) — Prisma exige conexão direta para DDL.
+
+**Verificado local (dev, path lax):** rota protegida sem sessão → /login; login → home (persistiu); /login logado → home; logout → /login com cookie limpo.
+
+**Passo-a-passo de plataformas:** ver `docs/DEPLOY.md`.
+
+---
+
 ## Verificação E2E realizada (27/07/2026)
 
 Fluxo completo no browser: registro → login (cookie) → criar projeto → criar task (status/prioridade/progresso) → sessão rápida em 2 cliques → captura rápida (append confirmado) → encerrar com task vinculada e próximo passo → criar sessão planejada com task → sessão planejada visível na Agenda (28/07) → item pessoal "Estudar NestJS e Node com APIs" na Agenda (29/07, badge "pessoal") → nota com markdown renderizando (heading/lista/negrito/código).

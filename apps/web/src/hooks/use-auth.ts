@@ -15,19 +15,29 @@ export function useMe() {
 
 export function useLogin() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { email: string; password: string }) =>
       api.post<User>('/auth/login', data),
-    onSuccess: () => router.push('/'),
+    // Popula o cache do ['me'] com o usuário retornado: sem isso, o AuthGate
+    // leria o 401 cacheado da tela de login e redirecionaria de volta.
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user);
+      router.push('/');
+    },
   });
 }
 
 export function useRegister() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { name: string; email: string; password: string }) =>
       api.post<User>('/auth/register', data),
-    onSuccess: () => router.push('/'),
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user);
+      router.push('/');
+    },
   });
 }
 

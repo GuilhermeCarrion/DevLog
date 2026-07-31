@@ -6,6 +6,7 @@ Sistema pessoal para registrar planejamentos, tasks, sessões de trabalho, notas
 
 - Especificação do MVP: [DevLog-MVP-Especificacao.md](./DevLog-MVP-Especificacao.md)
 - Documentação técnica das soluções: [docs/SOLUCOES.md](./docs/SOLUCOES.md)
+- Passo-a-passo de deploy (Vercel + Railway + Neon): [docs/DEPLOY.md](./docs/DEPLOY.md)
 
 ## Rodando
 

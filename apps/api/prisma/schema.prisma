@@ -22,19 +22,22 @@ model User {
   projects    Project[]
   notes       Note[]
   agendaItems AgendaItem[]
+  tags        Tag[]
 }
 
 // ============ Núcleo ============
 
 model Project {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  archived  Boolean  @default(false)
+  id          String   @id @default(cuid())
+  name        String
+  description String? // descrição livre do projeto
+  createdAt   DateTime @default(now())
+  archived    Boolean  @default(false)
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
+  tags          Tag[] // M2M: tags reutilizáveis do usuário
   groups        Group[]
   tasks         Task[]
   sessions      WorkSession[]
@@ -42,6 +45,19 @@ model Project {
   reports       Report[]
   agendaItems   AgendaItem[]
   reportProfile ReportProfile?
+}
+
+// Tag reutilizável, criada pelo usuário e aplicada a vários projetos (M2M).
+// Ex: "Pessoal", "Em Desenvolvimento", "Next", "Nest", "Python".
+model Tag {
+  id       String    @id @default(cuid())
+  name     String
+  color    String // hex, ex: "#a3e635"
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  projects Project[]
+
+  @@unique([userId, name]) // nomes de tag únicos por usuário
 }
 
 // Metadados fixos do cabeçalho do relatório semanal — editáveis a qualquer momento
@@ -63,6 +79,7 @@ model ReportProfile {
 model Group {
   id        String  @id @default(cuid())
   name      String
+  color     String? // hex opcional, ex: "#a3e635"
   projectId String
   project   Project @relation(fields: [projectId], references: [id])
   tasks     Task[]

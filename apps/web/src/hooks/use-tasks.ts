@@ -37,41 +37,72 @@ export function useGroups(projectId: string) {
   });
 }
 
-export function useCreateGroup(projectId: string) {
+// Mudança em grupo reflete na lista de grupos e nas tasks (que mostram a cor)
+function useInvalidateGroups(projectId: string) {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['groups', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+  };
+}
+
+export function useCreateGroup(projectId: string) {
+  const invalidate = useInvalidateGroups(projectId);
   return useMutation({
-    mutationFn: (data: { name: string }) =>
+    mutationFn: (data: { name: string; color?: string }) =>
       api.post<Group>(`/projects/${projectId}/groups`, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['groups', projectId] }),
+    onSuccess: invalidate,
   });
 }
 
-export function useCreateTask(projectId: string) {
+export function useUpdateGroup(projectId: string) {
+  const invalidate = useInvalidateGroups(projectId);
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; color?: string }) =>
+      api.patch<Group>(`/groups/${id}`, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteGroup(projectId: string) {
+  const invalidate = useInvalidateGroups(projectId);
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/groups/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+// Invalida a lista de tasks do projeto + os contadores (['projects'])
+function useInvalidateTasks(projectId: string) {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+  };
+}
+
+export function useCreateTask(projectId: string) {
+  const invalidate = useInvalidateTasks(projectId);
   return useMutation({
     mutationFn: (data: TaskInput) =>
       api.post<Task>(`/projects/${projectId}/tasks`, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }),
+    onSuccess: invalidate,
   });
 }
 
 export function useUpdateTask(projectId: string) {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateTasks(projectId);
   return useMutation({
     mutationFn: ({ id, ...data }: TaskInput & { id: string }) =>
       api.patch<Task>(`/tasks/${id}`, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }),
+    onSuccess: invalidate,
   });
 }
 
 export function useDeleteTask(projectId: string) {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateTasks(projectId);
   return useMutation({
     mutationFn: (id: string) => api.delete(`/tasks/${id}`),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] }),
+    onSuccess: invalidate,
   });
 }

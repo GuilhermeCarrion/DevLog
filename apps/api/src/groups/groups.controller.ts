@@ -7,15 +7,30 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { IsString, MinLength } from 'class-validator';
+import { IsHexColor, IsOptional, IsString, MinLength } from 'class-validator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { GroupsService } from './groups.service';
 
-class GroupDto {
+class CreateGroupDto {
   @IsString()
   @MinLength(1)
   name: string;
+
+  @IsOptional()
+  @IsHexColor()
+  color?: string;
+}
+
+class UpdateGroupDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsHexColor()
+  color?: string;
 }
 
 @Controller()
@@ -31,18 +46,18 @@ export class GroupsController {
   create(
     @CurrentUser() user: AuthUser,
     @Param('projectId') projectId: string,
-    @Body() dto: GroupDto,
+    @Body() dto: CreateGroupDto,
   ) {
-    return this.groupsService.create(user.id, projectId, dto.name);
+    return this.groupsService.create(user.id, projectId, dto);
   }
 
   @Patch('groups/:id')
   update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() dto: GroupDto,
+    @Body() dto: UpdateGroupDto,
   ) {
-    return this.groupsService.update(user.id, id, dto.name);
+    return this.groupsService.update(user.id, id, dto);
   }
 
   @Delete('groups/:id')

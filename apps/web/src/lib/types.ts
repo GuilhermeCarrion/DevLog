@@ -10,11 +10,19 @@ export interface User {
   name: string;
 }
 
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface Project {
   id: string;
   name: string;
+  description: string | null;
   createdAt: string;
   archived: boolean;
+  tags?: Tag[];
   _count?: { tasks: number; sessions: number; notes: number };
   groups?: Group[];
 }
@@ -22,6 +30,7 @@ export interface Project {
 export interface Group {
   id: string;
   name: string;
+  color: string | null;
   projectId: string;
 }
 

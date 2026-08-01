@@ -8,6 +8,7 @@ import { NotesModule } from './notes/notes.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { TagsModule } from './tags/tags.module';
 import { TasksModule } from './tasks/tasks.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { TasksModule } from './tasks/tasks.module';
     SessionsModule,
     NotesModule,
     AgendaModule,
+    TagsModule,
   ],
   controllers: [AppController],
 })

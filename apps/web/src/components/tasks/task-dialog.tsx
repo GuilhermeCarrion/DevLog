@@ -1,7 +1,9 @@
 'use client';
 
+import { Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { copyText, taskToText } from '@/lib/task-text';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -105,6 +107,24 @@ export function TaskDialog({
     });
   }
 
+  // Copia a task (com os valores atuais do formulário) como texto legível
+  async function handleCopy() {
+    if (!task) return;
+    const merged = {
+      ...task,
+      title,
+      description: description || null,
+      status,
+      priority,
+      progress,
+      notes: notes || null,
+      group: groups.find((g) => g.id === groupId) ?? null,
+    };
+    const ok = await copyText(taskToText(merged));
+    if (ok) toast.success('Task copiada como texto!');
+    else toast.error('Não consegui copiar');
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -136,7 +156,7 @@ export function TaskDialog({
               id="task-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              rows={5}
               placeholder="Mantida atualizada, vira a justificativa do relatório"
             />
           </div>
@@ -145,30 +165,23 @@ export function TaskDialog({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-status">Status</Label>
               <Select
-                id="task-status"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              >
-                {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => setStatus(v as TaskStatus)}
+                options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-priority">Prioridade</Label>
               <Select
-                id="task-priority"
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-              >
-                {Object.entries(PRIORITY_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => setPriority(v as TaskPriority)}
+                options={Object.entries(PRIORITY_LABEL).map(
+                  ([value, label]) => ({ value, label }),
+                )}
+              />
             </div>
           </div>
 
@@ -176,17 +189,17 @@ export function TaskDialog({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-group">Grupo</Label>
               <Select
-                id="task-group"
                 value={groupId}
-                onChange={(e) => setGroupId(e.target.value)}
-              >
-                <option value="">Sem grupo</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={setGroupId}
+                options={[
+                  { value: '', label: 'Sem grupo' },
+                  ...groups.map((g) => ({
+                    value: g.id,
+                    label: g.name,
+                    color: g.color ?? undefined,
+                  })),
+                ]}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="task-progress">
@@ -218,15 +231,25 @@ export function TaskDialog({
 
           <DialogFooter className="justify-between">
             {task ? (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleteTask.isPending}
-                className="mr-auto"
-              >
-                Excluir
-              </Button>
+              <div className="mr-auto flex gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleteTask.isPending}
+                >
+                  Excluir
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCopy}
+                  title="Copiar como texto para colar no Claude ou compartilhar"
+                >
+                  <Copy className="size-4" />
+                  Copiar
+                </Button>
+              </div>
             ) : null}
             <Button
               type="button"

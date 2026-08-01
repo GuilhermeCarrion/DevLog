@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+interface GroupData {
+  name?: string;
+  color?: string | null;
+}
+
 @Injectable()
 export class GroupsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -12,18 +17,23 @@ export class GroupsService {
     });
   }
 
-  async create(userId: string, projectId: string, name: string) {
+  async create(userId: string, projectId: string, data: GroupData) {
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, userId },
       select: { id: true },
     });
     if (!project) throw new NotFoundException('Projeto não encontrado');
-    return this.prisma.group.create({ data: { name, projectId } });
+    return this.prisma.group.create({
+      data: { name: data.name ?? '', color: data.color, projectId },
+    });
   }
 
-  async update(userId: string, id: string, name: string) {
+  async update(userId: string, id: string, data: GroupData) {
     await this.assertOwnership(userId, id);
-    return this.prisma.group.update({ where: { id }, data: { name } });
+    return this.prisma.group.update({
+      where: { id },
+      data: { name: data.name, color: data.color },
+    });
   }
 
   async remove(userId: string, id: string) {

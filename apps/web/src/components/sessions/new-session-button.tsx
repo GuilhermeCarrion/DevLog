@@ -103,17 +103,14 @@ export function NewSessionButton() {
           <div className="flex flex-col gap-3">
             <Select
               value={selectedProject}
-              onChange={(e) => setProjectId(e.target.value)}
-            >
-              {activeProjects.length === 0 && (
-                <option value="">Nenhum projeto</option>
-              )}
-              {activeProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
+              onValueChange={setProjectId}
+              placeholder="Selecione um projeto"
+              options={
+                activeProjects.length === 0
+                  ? [{ value: '', label: 'Nenhum projeto' }]
+                  : activeProjects.map((p) => ({ value: p.id, label: p.name }))
+              }
+            />
             <Button onClick={handleQuickStart} disabled={quickStart.isPending}>
               <Play className="size-4" />
               Iniciar agora

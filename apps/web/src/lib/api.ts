@@ -37,7 +37,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(res.status, message);
   }
 
-  return res.json() as Promise<T>;
+  // Respostas sem corpo (ex: GET /sessions/active sem sessão → null, ou 204 de
+  // um DELETE) fariam res.json() estourar. Lê como texto e só faz parse se houver
+  // conteúdo — senão devolve null. Sem isso, a query entra em erro e o React
+  // Query mantém o dado antigo em cache (era a causa do badge de sessão não sumir).
+  const text = await res.text();
+  return (text ? JSON.parse(text) : null) as T;
 }
 
 export const api = {

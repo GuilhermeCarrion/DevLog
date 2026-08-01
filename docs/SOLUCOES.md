@@ -255,6 +255,26 @@
 
 ---
 
+## Melhorias e correções — lote 1 (01/08/2026)
+
+**Bugs corrigidos:**
+- *Timer zerado* ([active-session-badge.tsx](../apps/web/src/components/sessions/active-session-badge.tsx)): o **React Compiler** (ligado no `next.config`) memoizava `formatElapsed(startedAt)` pela dependência que enxerga (`startedAt`, estável) e ignorava o `new Date()` interno — travando o valor. Correção: `now` em estado, atualizado por `setInterval` a cada 1s e passado como argumento, virando dependência explícita que o compilador recalcula.
+- *Encerrar sessão não atualizava a UI* ([api.ts](../apps/web/src/lib/api.ts)): `GET /sessions/active` sem sessão retorna `null` → corpo HTTP vazio → `res.json()` estourava → a query entrava em erro e o React Query **mantinha o dado antigo** em cache (badge não sumia; "encerrar" de novo dava 409). Correção: o cliente lê `res.text()` e só faz `JSON.parse` se houver conteúdo (corpo vazio → `null`). Além disso, `useFinishSession` faz `setQueryData(['sessions','active'], null)` para o badge sumir na hora.
+- *Listas/contadores não atualizavam*: mutações de task/sessão/nota agora invalidam também `['projects']` (os contadores do card e do header do projeto vinham de lá).
+- *Spellcheck e autocomplete*: `Input`/`Textarea` agora têm `spellCheck={false}` e `autoComplete="off"` por padrão (sobrescrevíveis), removendo o sublinhado vermelho e as sugestões do browser.
+
+**Componente Select estilizado** ([select.tsx](../apps/web/src/components/ui/select.tsx)): trocado o `<select>` nativo (feio) por um componente próprio sobre **Radix Select**, combinando com o tema (chevron, check lima, dot de cor opcional). API simples via `options` para trocar os 7 call sites com baixo risco. Detalhe: Radix não aceita `value=""`, então traduzimos `'' ↔ '__empty__'` internamente para manter o "Sem projeto/Todos" funcionando.
+
+**Copiar task como texto** ([task-text.ts](../apps/web/src/lib/task-text.ts)): `taskToText()` formata a task de forma legível (título, status+%, prioridade, grupo, descrição, notas — só campos preenchidos) para colar no Claude ou compartilhar. Botão de copiar no card (aparece no hover) e no dialog de edição. `copyText()` usa Clipboard API com fallback para `execCommand`.
+
+**Projetos:** `description` (schema + form com campo maior) e **tags reutilizáveis com cor** (novo model `Tag` M2M com `Project`, escopado por usuário, `@@unique([userId,name])`). `TagPicker` cria/alterna tags e escolhe cor de uma paleta ([color-picker.tsx](../apps/web/src/components/ui/color-picker.tsx)). Projeto agora é editável (dialog único criar/editar). Abas Tasks/Sessões/Notas viraram um segmented control com aba ativa em **accent lima** (antes só uma barra cinza).
+
+**Grupos:** ganharam `color` (opcional) e um **form de CRUD** (criar/editar/excluir com seletor de cor), substituindo o `prompt()`. A cor aparece como dot no header do grupo e no dropdown de seleção.
+
+**Migration:** `20260801120000_project_desc_tags_group_color` (gerada via `prisma migrate diff` sem banco, por causa da instabilidade do Docker local; aplicada e validada no Postgres local). É aditiva/não-destrutiva (colunas nulas + tabelas novas) — o deploy aplica no Neon via `migrate deploy`.
+
+---
+
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)
 
 **Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`

@@ -101,18 +101,17 @@ export function NoteDialog({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="note-project">Projeto</Label>
               <Select
-                id="note-project"
                 value={projectId}
                 disabled={!!fixedProjectId}
-                onChange={(e) => setProjectId(e.target.value)}
-              >
-                <option value="">Sem projeto</option>
-                {projects?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={setProjectId}
+                options={[
+                  { value: '', label: 'Sem projeto' },
+                  ...(projects ?? []).map((p) => ({
+                    value: p.id,
+                    label: p.name,
+                  })),
+                ]}
+              />
             </div>
           </div>
 

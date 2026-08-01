@@ -18,27 +18,36 @@ export function useNotes(projectId?: string) {
   });
 }
 
-export function useCreateNote() {
+// Invalida as notas + os contadores do projeto (['projects'])
+function useInvalidateNotes() {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['notes'] });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+  };
+}
+
+export function useCreateNote() {
+  const invalidate = useInvalidateNotes();
   return useMutation({
     mutationFn: (data: NoteInput) => api.post<Note>('/notes', data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),
+    onSuccess: invalidate,
   });
 }
 
 export function useUpdateNote() {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateNotes();
   return useMutation({
     mutationFn: ({ id, ...data }: Partial<NoteInput> & { id: string }) =>
       api.patch<Note>(`/notes/${id}`, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),
+    onSuccess: invalidate,
   });
 }
 
 export function useDeleteNote() {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateNotes();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/notes/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),
+    onSuccess: invalidate,
   });
 }

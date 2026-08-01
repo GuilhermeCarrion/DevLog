@@ -145,17 +145,16 @@ function PlanSessionDialog({
             <Label>Projeto</Label>
             <Select
               value={selectedProject}
-              onChange={(e) => {
-                setProjectId(e.target.value);
+              onValueChange={(v) => {
+                setProjectId(v);
                 setTaskIds([]);
               }}
-            >
-              {activeProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
+              placeholder="Selecione um projeto"
+              options={activeProjects.map((p) => ({
+                value: p.id,
+                label: p.name,
+              }))}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Quando</Label>

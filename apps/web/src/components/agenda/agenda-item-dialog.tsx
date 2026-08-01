@@ -124,16 +124,13 @@ export function AgendaItemDialog({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="agenda-type">Tipo</Label>
               <Select
-                id="agenda-type"
                 value={type}
-                onChange={(e) => setType(e.target.value as AgendaItemType)}
-              >
-                {Object.entries(TYPE_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+                onValueChange={(v) => setType(v as AgendaItemType)}
+                options={Object.entries(TYPE_LABEL).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
             </div>
           </div>
 
@@ -142,19 +139,15 @@ export function AgendaItemDialog({
               Projeto <span className="text-muted-foreground/60">(opcional)</span>
             </Label>
             <Select
-              id="agenda-project"
               value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-            >
-              <option value="">Pessoal (sem projeto)</option>
-              {projects
-                ?.filter((p) => !p.archived)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-            </Select>
+              onValueChange={setProjectId}
+              options={[
+                { value: '', label: 'Pessoal (sem projeto)' },
+                ...(projects ?? [])
+                  .filter((p) => !p.archived)
+                  .map((p) => ({ value: p.id, label: p.name })),
+              ]}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">

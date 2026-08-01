@@ -5,11 +5,14 @@ import { api } from '@/lib/api';
 import type { WorkSession } from '@/lib/types';
 
 // Toda mutação de sessão invalida o prefixo ['sessions'] — cobre lista,
-// planejadas e ativa de uma vez (fuzzy matching do React Query por prefixo)
+// planejadas e ativa de uma vez (fuzzy matching do React Query por prefixo).
+// Também invalida ['projects'] (contadores de sessões do projeto) e ['agenda']
+// (sessões planejadas aparecem no calendário).
 function useInvalidateSessions() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
     queryClient.invalidateQueries({ queryKey: ['agenda'] });
   };
 }
@@ -86,6 +89,7 @@ export function useCapture() {
 
 export function useFinishSession() {
   const invalidate = useInvalidateSessions();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       id,
@@ -97,7 +101,11 @@ export function useFinishSession() {
       nextStep?: string;
       taskIds?: string[];
     }) => api.post<WorkSession>(`/sessions/${id}/finish`, data),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      // Some com o badge na hora (sem esperar o refetch de /sessions/active)
+      queryClient.setQueryData(['sessions', 'active'], null);
+      invalidate();
+    },
   });
 }
 

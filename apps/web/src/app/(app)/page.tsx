@@ -1,44 +1,25 @@
 'use client';
 
-import { Archive, ArchiveRestore, FolderKanban, Plus } from 'lucide-react';
+import { Archive, ArchiveRestore, FolderKanban, Pencil, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { ProjectDialog } from '@/components/projects/project-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useCreateProject, useProjects, useUpdateProject } from '@/hooks/use-projects';
+import { useProjects, useUpdateProject } from '@/hooks/use-projects';
 import { formatDate } from '@/lib/format';
+import type { Project } from '@/lib/types';
 
 export default function ProjectsPage() {
   const { data: projects, isLoading } = useProjects();
-  const createProject = useCreateProject();
   const updateProject = useUpdateProject();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Project | null>(null);
 
-  function handleCreate() {
-    if (!name.trim()) return;
-    createProject.mutate(
-      { name: name.trim() },
-      {
-        onSuccess: () => {
-          setOpen(false);
-          setName('');
-          toast.success('Projeto criado!');
-        },
-        onError: (e) => toast.error(e.message),
-      },
-    );
+  function openCreate() {
+    setEditing(null);
+    setDialogOpen(true);
   }
 
   const active = projects?.filter((p) => !p.archived) ?? [];
@@ -53,15 +34,13 @@ export default function ProjectsPage() {
             Seus projetos e o que está acontecendo em cada um
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={openCreate}>
           <Plus className="size-4" />
           Novo projeto
         </Button>
       </div>
 
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Carregando…</p>
-      )}
+      {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
 
       {!isLoading && active.length === 0 && (
         <Card className="border-dashed">
@@ -71,7 +50,7 @@ export default function ProjectsPage() {
               Nenhum projeto ainda. Crie o primeiro para começar a registrar
               sessões.
             </p>
-            <Button onClick={() => setOpen(true)} variant="outline">
+            <Button onClick={openCreate} variant="outline">
               <Plus className="size-4" />
               Criar projeto
             </Button>
@@ -82,35 +61,75 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {active.map((project) => (
           <Link key={project.id} href={`/projetos/${project.id}`}>
-            <Card className="h-full transition-colors hover:border-primary/40">
+            <Card className="flex h-full flex-col transition-colors hover:border-primary/40">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base">{project.name}</CardTitle>
-                  <button
-                    title="Arquivar"
-                    className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      updateProject.mutate({ id: project.id, archived: true });
-                    }}
-                  >
-                    <Archive className="size-3.5" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <button
+                      title="Editar"
+                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEditing(project);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      title="Arquivar"
+                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        updateProject.mutate({ id: project.id, archived: true });
+                      }}
+                    >
+                      <Archive className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                {project.description && (
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {project.description}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground/70">
                   criado em {formatDate(project.createdAt)}
                 </p>
               </CardHeader>
-              <CardContent className="flex gap-2">
-                <Badge variant="secondary">
-                  {project._count?.tasks ?? 0} tasks
-                </Badge>
-                <Badge variant="secondary">
-                  {project._count?.sessions ?? 0} sessões
-                </Badge>
-                <Badge variant="secondary">
-                  {project._count?.notes ?? 0} notas
-                </Badge>
+              <CardContent className="mt-auto flex flex-col gap-3">
+                {project.tags && project.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {project.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+                        style={{
+                          background: `${tag.color}22`,
+                          color: tag.color,
+                        }}
+                      >
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ background: tag.color }}
+                        />
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Badge variant="secondary">
+                    {project._count?.tasks ?? 0} tasks
+                  </Badge>
+                  <Badge variant="secondary">
+                    {project._count?.sessions ?? 0} sessões
+                  </Badge>
+                  <Badge variant="secondary">
+                    {project._count?.notes ?? 0} notas
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -145,43 +164,11 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Novo projeto</DialogTitle>
-          </DialogHeader>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleCreate();
-            }}
-            className="flex flex-col gap-4"
-          >
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="project-name">Nome</Label>
-              <Input
-                id="project-name"
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="ex: TCC, DevLog, Moven…"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={createProject.isPending}>
-                Criar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ProjectDialog
+        project={editing}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

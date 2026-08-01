@@ -92,19 +92,16 @@ export default function AgendaPage() {
         <div className="flex items-center gap-2">
           <Select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onValueChange={setFilter}
             className="w-40"
-          >
-            <option value="">Tudo</option>
-            <option value="pessoal">Só pessoais</option>
-            {projects
-              ?.filter((p) => !p.archived)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-          </Select>
+            options={[
+              { value: '', label: 'Tudo' },
+              { value: 'pessoal', label: 'Só pessoais' },
+              ...(projects ?? [])
+                .filter((p) => !p.archived)
+                .map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
           <Button
             onClick={() => {
               setEditing(null);

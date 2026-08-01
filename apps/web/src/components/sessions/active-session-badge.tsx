@@ -23,13 +23,15 @@ export function ActiveSessionBadge() {
   const [commits, setCommits] = useState('');
   const [finishOpen, setFinishOpen] = useState(false);
 
-  // Re-renderiza a cada segundo para o timer andar (client-side puro)
-  const [, tick] = useState(0);
+  // `now` em estado (não só um tick): o React Compiler memoiza formatElapsed pela
+  // dependência que ENXERGA (startedAt, estável) e ignoraria new Date() interno.
+  // Passando `now` como dependência explícita, o valor recalcula a cada segundo.
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => tick((n) => n + 1), 1000);
+    if (!active?.startedAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [active]);
+  }, [active?.startedAt]);
 
   if (!active?.startedAt) return null;
 
@@ -59,7 +61,9 @@ export function ActiveSessionBadge() {
           <PopoverTrigger asChild>
             <button className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer">
               <Timer className="size-4 animate-pulse" />
-              <span className="font-mono">{formatElapsed(active.startedAt)}</span>
+              <span className="font-mono">
+                {formatElapsed(active.startedAt, new Date(now))}
+              </span>
               <span className="max-w-32 truncate text-xs text-primary/80">
                 {active.project.name}
               </span>

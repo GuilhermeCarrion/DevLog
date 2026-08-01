@@ -273,6 +273,10 @@
 
 **Migration:** `20260801120000_project_desc_tags_group_color` (gerada via `prisma migrate diff` sem banco, por causa da instabilidade do Docker local; aplicada e validada no Postgres local). É aditiva/não-destrutiva (colunas nulas + tabelas novas) — o deploy aplica no Neon via `migrate deploy`.
 
+**Ajustes visuais (lote 1b):**
+- *Sidebar fixa* ([sidebar.tsx](../apps/web/src/components/layout/sidebar.tsx)): antes a `<aside>` era um flex item que esticava até a altura do conteúdo, então quando a lista de tasks rolava, o botão "Sair" (no rodapé da sidebar) saía da tela. Correção: `sticky top-0 h-screen self-start` — a sidebar passa a ter exatamente a altura da viewport e fica pinada no topo, com o conteúdo central rolando sozinho. `overflow-y-auto` no `<nav>` cobre telas muito baixas.
+- *Identificação de grupo na task* ([tasks-tab.tsx](../apps/web/src/components/tasks/tasks-tab.tsx)): cada card ganhou uma **faixa vertical de 4px à esquerda na cor do grupo** (some quando a task não tem grupo/cor) + um **chip com dot e nome do grupo** ao lado do título. Reforça a identidade do grupo num relance, útil principalmente ao filtrar tasks de grupos misturados.
+
 ---
 
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)

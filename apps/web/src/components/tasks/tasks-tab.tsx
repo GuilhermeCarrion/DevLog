@@ -158,48 +158,73 @@ export function TasksTab({ projectId }: { projectId: string }) {
                   setEditing(task);
                   setDialogOpen(true);
                 }}
-                className="group/task flex cursor-pointer flex-col gap-2 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/40"
+                className="group/task flex cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left transition-colors hover:border-primary/40"
               >
-                <div className="flex items-center gap-2">
+                {/* Faixa lateral na cor do grupo — identifica o grupo num relance */}
+                {task.group?.color && (
                   <span
-                    className={`text-sm font-medium ${task.status === 'CONCLUIDO' ? 'text-muted-foreground line-through' : ''}`}
-                  >
-                    {task.title}
-                  </span>
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <button
-                      title="Copiar como texto"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopy(task);
-                      }}
-                      className="rounded p-1 text-muted-foreground/50 opacity-0 transition-all hover:bg-accent hover:text-foreground group-hover/task:opacity-100 cursor-pointer"
-                    >
-                      <Copy className="size-3.5" />
-                    </button>
-                    <Badge variant={STATUS_VARIANT[task.status]}>
-                      {STATUS_LABEL[task.status]}
-                    </Badge>
-                    <Badge variant={PRIORITY_VARIANT[task.priority]}>
-                      {PRIORITY_LABEL[task.priority]}
-                    </Badge>
-                  </div>
-                </div>
-                {task.description && (
-                  <p className="line-clamp-1 text-xs text-muted-foreground">
-                    {task.description}
-                  </p>
+                    aria-hidden
+                    className="w-1 shrink-0"
+                    style={{ background: task.group.color }}
+                  />
                 )}
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${task.progress}%` }}
-                    />
+                <div className="flex flex-1 flex-col gap-2 p-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-sm font-medium ${task.status === 'CONCLUIDO' ? 'text-muted-foreground line-through' : ''}`}
+                    >
+                      {task.title}
+                    </span>
+                    {task.group && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                        style={{
+                          background: `${task.group.color ?? '#9aa0aa'}22`,
+                          color: task.group.color ?? '#9aa0aa',
+                        }}
+                      >
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ background: task.group.color ?? '#9aa0aa' }}
+                        />
+                        {task.group.name}
+                      </span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <button
+                        title="Copiar como texto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(task);
+                        }}
+                        className="rounded p-1 text-muted-foreground/50 opacity-0 transition-all hover:bg-accent hover:text-foreground group-hover/task:opacity-100 cursor-pointer"
+                      >
+                        <Copy className="size-3.5" />
+                      </button>
+                      <Badge variant={STATUS_VARIANT[task.status]}>
+                        {STATUS_LABEL[task.status]}
+                      </Badge>
+                      <Badge variant={PRIORITY_VARIANT[task.priority]}>
+                        {PRIORITY_LABEL[task.priority]}
+                      </Badge>
+                    </div>
                   </div>
-                  <span className="w-9 text-right font-mono text-xs text-muted-foreground">
-                    {task.progress}%
-                  </span>
+                  {task.description && (
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                      {task.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${task.progress}%` }}
+                      />
+                    </div>
+                    <span className="w-9 text-right font-mono text-xs text-muted-foreground">
+                      {task.progress}%
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

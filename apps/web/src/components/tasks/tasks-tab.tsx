@@ -32,6 +32,7 @@ const STATUS_VARIANT: Record<TaskStatus, 'outline' | 'info' | 'default' | 'secon
 export function TasksTab({ projectId }: { projectId: string }) {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
   const [groupFilter, setGroupFilter] = useState('');
+  const [showDone, setShowDone] = useState(false);
   const { data: tasks, isLoading } = useTasks(projectId, {
     status: statusFilter,
     groupId: groupFilter,
@@ -43,13 +44,20 @@ export function TasksTab({ projectId }: { projectId: string }) {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
 
+  // Por padrão esconde as concluídas. Se o usuário filtra explicitamente por
+  // um status, respeita o filtro (não aplica o esconde).
+  const visibleTasks = useMemo(() => {
+    if (statusFilter || showDone) return tasks ?? [];
+    return (tasks ?? []).filter((t) => t.status !== 'CONCLUIDO');
+  }, [tasks, statusFilter, showDone]);
+
   // Agrupa por grupo (tasks sem grupo ficam em "Sem grupo", no fim)
   const grouped = useMemo(() => {
     const map = new Map<
       string,
       { name: string; group: Group | null; tasks: Task[] }
     >();
-    for (const task of tasks ?? []) {
+    for (const task of visibleTasks) {
       const key = task.group?.id ?? '__none__';
       const name = task.group?.name ?? 'Sem grupo';
       if (!map.has(key)) map.set(key, { name, group: task.group, tasks: [] });
@@ -58,7 +66,7 @@ export function TasksTab({ projectId }: { projectId: string }) {
     return [...map.entries()].sort(([a], [b]) =>
       a === '__none__' ? 1 : b === '__none__' ? -1 : 0,
     );
-  }, [tasks]);
+  }, [visibleTasks]);
 
   function openNewGroup() {
     setEditingGroup(null);
@@ -99,6 +107,15 @@ export function TasksTab({ projectId }: { projectId: string }) {
             })),
           ]}
         />
+        <label className="flex cursor-pointer select-none items-center gap-1.5 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showDone}
+            onChange={(e) => setShowDone(e.target.checked)}
+            className="accent-[#a3e635]"
+          />
+          Mostrar concluídas
+        </label>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" size="sm" onClick={openNewGroup}>
             <FolderPlus className="size-4" />
@@ -119,9 +136,11 @@ export function TasksTab({ projectId }: { projectId: string }) {
 
       {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
 
-      {!isLoading && !tasks?.length && (
+      {!isLoading && !visibleTasks.length && (
         <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-          Nenhuma task{statusFilter || groupFilter ? ' com esses filtros' : ''}.
+          {tasks?.length && !showDone && !statusFilter
+            ? 'Só há tasks concluídas — marque “Mostrar concluídas” para vê-las.'
+            : `Nenhuma task${statusFilter || groupFilter ? ' com esses filtros' : ''}.`}
         </p>
       )}
 

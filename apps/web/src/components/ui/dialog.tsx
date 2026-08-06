@@ -18,6 +18,11 @@ function DialogContent({
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
       <DialogPrimitive.Content
+        // Não fecha ao clicar fora nem no Escape — evita perder criação/edição
+        // por engano. Fechar só pelo X ou pelos botões Cancelar/Salvar.
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
         className={cn(
           'fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-lg border border-border bg-popover p-6 shadow-xl',
           className,

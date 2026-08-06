@@ -13,7 +13,13 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarClock, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import {
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Timer,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AgendaItemDialog } from '@/components/agenda/agenda-item-dialog';
@@ -26,7 +32,7 @@ import {
   useUpdateAgendaItem,
 } from '@/hooks/use-agenda';
 import { useProjects } from '@/hooks/use-projects';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatDuration } from '@/lib/format';
 import type { AgendaItem, AgendaItemType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -75,9 +81,19 @@ export default function AgendaPage() {
     return all.filter((s) => s.projectId === filter);
   }, [data, filter]);
 
+  // Sessões executadas (startedAt no mês) — a "camada heatmap" do que foi feito
+  const doneSessions = useMemo(() => {
+    const all = data?.sessions ?? [];
+    if (!filter || filter === 'pessoal') return filter ? [] : all;
+    return all.filter((s) => s.projectId === filter);
+  }, [data, filter]);
+
   const dayItems = items.filter((i) => isSameDay(new Date(i.date), selectedDay));
   const daySessions = plannedSessions.filter(
     (s) => s.plannedFor && isSameDay(new Date(s.plannedFor), selectedDay),
+  );
+  const dayDoneSessions = doneSessions.filter(
+    (s) => s.startedAt && isSameDay(new Date(s.startedAt), selectedDay),
   );
 
   return (
@@ -170,13 +186,27 @@ export default function AgendaPage() {
                 const hasSession = plannedSessions.some(
                   (s) => s.plannedFor && isSameDay(new Date(s.plannedFor), day),
                 );
+                // Sessões executadas no dia → intensidade estilo heatmap
+                const doneCount = doneSessions.filter(
+                  (s) => s.startedAt && isSameDay(new Date(s.startedAt), day),
+                ).length;
+                const heat =
+                  doneCount >= 3
+                    ? 'bg-primary/25'
+                    : doneCount === 2
+                      ? 'bg-primary/15'
+                      : doneCount === 1
+                        ? 'bg-primary/8'
+                        : '';
                 return (
                   <button
                     key={day.toISOString()}
                     onClick={() => setSelectedDay(day)}
+                    title={doneCount ? `${doneCount} sessão(ões) neste dia` : undefined}
                     className={cn(
                       'flex min-h-20 flex-col items-start gap-1 border-b border-r border-border/60 p-1.5 text-left transition-colors last:border-r-0 cursor-pointer',
                       inMonth ? 'hover:bg-accent/60' : 'bg-background/40 text-muted-foreground/50',
+                      inMonth && heat,
                       selected && 'bg-accent',
                     )}
                   >
@@ -190,6 +220,14 @@ export default function AgendaPage() {
                       {format(day, 'd')}
                     </span>
                     <div className="flex flex-wrap gap-1">
+                      {doneCount > 0 && (
+                        <span
+                          title={`${doneCount} sessão(ões) feita(s)`}
+                          className="inline-flex items-center gap-0.5 rounded-full bg-primary/20 px-1 text-[9px] font-medium leading-tight text-primary"
+                        >
+                          {doneCount}×
+                        </span>
+                      )}
                       {hasSession && (
                         <span
                           title="Sessão planejada"
@@ -220,6 +258,12 @@ export default function AgendaPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-full bg-primary/20 px-1 text-[9px] font-medium text-primary">
+                n×
+              </span>{' '}
+              sessões feitas
+            </span>
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-primary" /> sessão planejada
             </span>
@@ -255,11 +299,70 @@ export default function AgendaPage() {
             <p className="text-sm text-muted-foreground">Carregando…</p>
           )}
 
-          {!isLoading && !dayItems.length && !daySessions.length && (
-            <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
-              Nada marcado para este dia.
-            </p>
-          )}
+          {!isLoading &&
+            !dayItems.length &&
+            !daySessions.length &&
+            !dayDoneSessions.length && (
+              <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+                Nada marcado para este dia.
+              </p>
+            )}
+
+          {/* Sessões executadas neste dia (o que foi feito) */}
+          {dayDoneSessions.map((s) => (
+            <div
+              key={s.id}
+              className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-3"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <span className="flex size-5 items-center justify-center rounded-full bg-primary/20">
+                  <Timer className="size-3 text-primary" />
+                </span>
+                Sessão — {s.project.name}
+                {s.endedAt && (
+                  <span className="ml-auto font-mono text-xs text-primary/80">
+                    {formatDuration(s.startedAt!, s.endedAt)}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {s.startedAt && formatDateTime(s.startedAt)}
+                {!s.endedAt && ' · em andamento'}
+              </span>
+              {s.tasks.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {s.tasks.map((t) => (
+                    <span
+                      key={t.id}
+                      className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px]"
+                      style={
+                        t.group?.color
+                          ? {
+                              background: `${t.group.color}18`,
+                              borderColor: `${t.group.color}55`,
+                              color: t.group.color,
+                            }
+                          : undefined
+                      }
+                    >
+                      {t.group?.color && (
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ background: t.group.color }}
+                        />
+                      )}
+                      {t.title}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {s.notes && (
+                <p className="whitespace-pre-wrap text-xs text-muted-foreground">
+                  {s.notes}
+                </p>
+              )}
+            </div>
+          ))}
 
           {daySessions.map((s) => (
             <div

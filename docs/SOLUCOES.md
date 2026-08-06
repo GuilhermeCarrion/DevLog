@@ -279,6 +279,20 @@
 
 ---
 
+## Melhorias — lote 2 (05/08/2026)
+
+**Projeto — Notas viram painel lateral** ([notes-panel.tsx](../apps/web/src/components/notes/notes-panel.tsx), [projetos/[id]/page.tsx](<../apps/web/src/app/(app)/projetos/[id]/page.tsx>)): a página do projeto agora tem só **duas abas** (Tasks/Sessões) num grid `lg:grid-cols-[1fr_19rem]`, com um **painel de "Notas & recados"** fixo à direita (empilha embaixo em telas < lg). O painel tem quick-add (Ctrl/Cmd+Enter) que cria um recado na hora (título = 1ª linha); clicar num recado abre o editor markdown completo. URLs antigas com `?tab=notas` caem em Tasks.
+
+**Tasks — esconder concluídas por padrão** ([tasks-tab.tsx](../apps/web/src/components/tasks/tasks-tab.tsx)): checkbox "Mostrar concluídas" (off por padrão) filtra `CONCLUIDO` client-side; filtro de status explícito tem precedência. *Bug corrigido no caminho:* o `grouped` usava `visibleTasks` no corpo mas tinha `[tasks]` no array de dependências do `useMemo` — não recalculava ao marcar/desmarcar (mesma família do bug do timer). Corrigido para `[visibleTasks]`.
+
+**Sessões — tasks com a cor do grupo** ([sessions.service.ts](../apps/api/src/sessions/sessions.service.ts), [session-card.tsx](../apps/web/src/components/sessions/session-card.tsx)): a query de sessão passou a incluir `group` nas tasks; os chips das tasks no card usam a cor do grupo (fundo/borda/texto tingidos).
+
+**Modais — não fechar por engano** ([dialog.tsx](../apps/web/src/components/ui/dialog.tsx)): `DialogContent` bloqueia `onPointerDownOutside`/`onInteractOutside`/`onEscapeKeyDown` — clicar fora ou apertar Esc não fecha mais (evita perder edição). Fechar só pelo X ou Cancelar/Salvar.
+
+**Agenda — sessões executadas (heatmap)** ([agenda.service.ts](../apps/api/src/agenda/agenda.service.ts), [agenda/page.tsx](<../apps/web/src/app/(app)/agenda/page.tsx>)): o endpoint do mês passou a devolver também `sessions` (executadas, `startedAt` no mês). No calendário, cada dia ganha um badge `n×` e um **fundo lima com intensidade proporcional** ao nº de sessões (estilo heatmap do GitHub); o painel do dia lista cada sessão feita (projeto, duração, horário e tasks coloridas por grupo).
+
+---
+
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)
 
 **Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`

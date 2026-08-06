@@ -136,11 +136,29 @@ export function SessionCard({ session }: { session: WorkSession }) {
 
       {session.tasks.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {session.tasks.map((t) => (
-            <Badge key={t.id} variant="outline">
-              {t.title}
-            </Badge>
-          ))}
+          {session.tasks.map((t) => {
+            const color = t.group?.color;
+            return (
+              <span
+                key={t.id}
+                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs"
+                style={
+                  color
+                    ? { background: `${color}18`, borderColor: `${color}55`, color }
+                    : undefined
+                }
+                // sem cor de grupo → cai no estilo neutro (borda padrão)
+              >
+                {color && (
+                  <span
+                    className="size-1.5 rounded-full"
+                    style={{ background: color }}
+                  />
+                )}
+                {t.title}
+              </span>
+            );
+          })}
         </div>
       )}
 

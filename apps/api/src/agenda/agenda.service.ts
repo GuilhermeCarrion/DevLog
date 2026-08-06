@@ -18,27 +18,45 @@ export class AgendaService {
   async month(userId: string, month: string) {
     const range = this.monthRange(month);
 
-    const [items, plannedSessions] = await Promise.all([
+    const sessionInclude = {
+      project: { select: { id: true, name: true } },
+      tasks: {
+        select: {
+          id: true,
+          title: true,
+          group: { select: { id: true, name: true, color: true } },
+        },
+      },
+    } as const;
+
+    const [items, plannedSessions, sessions] = await Promise.all([
       this.prisma.agendaItem.findMany({
         where: { userId, date: { gte: range.start, lt: range.end } },
         include: { project: { select: { id: true, name: true } } },
         orderBy: { date: 'asc' },
       }),
+      // Planejadas: ainda não iniciadas, com plannedFor no mês
       this.prisma.workSession.findMany({
         where: {
           project: { userId },
           startedAt: null,
           plannedFor: { gte: range.start, lt: range.end },
         },
-        include: {
-          project: { select: { id: true, name: true } },
-          tasks: { select: { id: true, title: true } },
-        },
+        include: sessionInclude,
         orderBy: { plannedFor: 'asc' },
+      }),
+      // Executadas: iniciadas dentro do mês (para o "heatmap" do que foi feito)
+      this.prisma.workSession.findMany({
+        where: {
+          project: { userId },
+          startedAt: { gte: range.start, lt: range.end },
+        },
+        include: sessionInclude,
+        orderBy: { startedAt: 'asc' },
       }),
     ]);
 
-    return { items, plannedSessions };
+    return { items, plannedSessions, sessions };
   }
 
   async create(userId: string, dto: CreateAgendaItemDto) {

@@ -14,7 +14,15 @@ import {
 
 const SESSION_INCLUDE = {
   project: { select: { id: true, name: true } },
-  tasks: { select: { id: true, title: true, status: true } },
+  tasks: {
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      // grupo p/ colorir os badges das tasks nos cards de sessão
+      group: { select: { id: true, name: true, color: true } },
+    },
+  },
 } as const;
 
 @Injectable()

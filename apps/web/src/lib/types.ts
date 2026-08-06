@@ -59,7 +59,12 @@ export interface WorkSession {
   notes: string | null;
   commits: string | null;
   nextStep: string | null;
-  tasks: { id: string; title: string; status?: TaskStatus }[];
+  tasks: {
+    id: string;
+    title: string;
+    status?: TaskStatus;
+    group?: { id: string; name: string; color: string | null } | null;
+  }[];
 }
 
 // Status derivado da sessão (regra da spec — nunca persistido)
@@ -94,4 +99,5 @@ export interface AgendaItem {
 export interface AgendaMonth {
   items: AgendaItem[];
   plannedSessions: WorkSession[];
+  sessions: WorkSession[]; // executadas (startedAt no mês) — visão do que foi feito
 }

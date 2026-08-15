@@ -4,6 +4,8 @@ import { ArrowLeft, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { CalcCard } from '@/components/calc/calc-card';
+import { CalcTab } from '@/components/calc/calc-tab';
 import { NotesPanel } from '@/components/notes/notes-panel';
 import { ProjectDialog } from '@/components/projects/project-dialog';
 import { SessionCard } from '@/components/sessions/session-card';
@@ -16,6 +18,7 @@ import { cn } from '@/lib/utils';
 const TABS = [
   { key: 'tasks', label: 'Tasks' },
   { key: 'sessoes', label: 'Sessões' },
+  { key: 'calc', label: 'Calculadora' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -102,42 +105,51 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      {/* Conteúdo principal (Tasks/Sessões) + painel lateral de Notas & recados */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_19rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          {/* Segmented tabs — aba ativa em accent lima */}
-          <div className="flex w-fit gap-1 rounded-lg border border-border bg-card p-1">
-            {TABS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => router.replace(`/projetos/${id}?tab=${key}`)}
-                className={cn(
-                  'rounded-md px-4 py-1.5 text-sm transition-colors cursor-pointer',
-                  tab === key
-                    ? 'bg-primary/15 font-medium text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+      {/* Segmented tabs — aba ativa em accent lima */}
+      <div className="flex w-fit gap-1 rounded-lg border border-border bg-card p-1">
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => router.replace(`/projetos/${id}?tab=${key}`)}
+            className={cn(
+              'rounded-md px-4 py-1.5 text-sm transition-colors cursor-pointer',
+              tab === key
+                ? 'bg-primary/15 font-medium text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Calculadora ocupa a tela toda (sem notas nem totalizador aqui) */}
+      {tab === 'calc' ? (
+        <CalcTab project={project} sessions={sessions ?? []} />
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_19rem]">
+          <div className="flex min-w-0 flex-col gap-6">
+            {tab === 'tasks' && <TasksTab projectId={id} />}
+            {tab === 'sessoes' && (
+              <div className="flex flex-col gap-3">
+                {!sessions?.length && (
+                  <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+                    Nenhuma sessão neste projeto. Use o botão “Nova Sessão” no
+                    topo.
+                  </p>
                 )}
-              >
-                {label}
-              </button>
-            ))}
+                {sessions?.map((s) => <SessionCard key={s.id} session={s} />)}
+              </div>
+            )}
           </div>
 
-          {tab === 'tasks' && <TasksTab projectId={id} />}
-          {tab === 'sessoes' && (
-            <div className="flex flex-col gap-3">
-              {!sessions?.length && (
-                <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-                  Nenhuma sessão neste projeto. Use o botão “Nova Sessão” no topo.
-                </p>
-              )}
-              {sessions?.map((s) => <SessionCard key={s.id} session={s} />)}
-            </div>
-          )}
+          {/* Coluna lateral: calculadora (resumo) em cima de Notas & recados */}
+          <div className="flex flex-col gap-6">
+            <CalcCard project={project} sessions={sessions ?? []} />
+            <NotesPanel projectId={id} />
+          </div>
         </div>
-
-        <NotesPanel projectId={id} />
-      </div>
+      )}
 
       <ProjectDialog
         project={project}

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AgendaModule } from './agenda/agenda.module';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
+import { CostsModule } from './costs/costs.module';
 import { GroupsModule } from './groups/groups.module';
 import { NotesModule } from './notes/notes.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -24,6 +25,7 @@ import { TasksModule } from './tasks/tasks.module';
     NotesModule,
     AgendaModule,
     TagsModule,
+    CostsModule,
   ],
   controllers: [AppController],
 })

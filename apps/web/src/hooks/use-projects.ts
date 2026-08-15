@@ -8,6 +8,7 @@ export interface ProjectInput {
   name?: string;
   description?: string;
   archived?: boolean;
+  marginPercent?: number | null;
   tagIds?: string[];
 }
 

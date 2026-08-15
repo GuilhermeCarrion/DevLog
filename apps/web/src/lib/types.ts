@@ -22,9 +22,62 @@ export interface Project {
   description: string | null;
   createdAt: string;
   archived: boolean;
+  marginPercent: number | null;
   tags?: Tag[];
   _count?: { tasks: number; sessions: number; notes: number };
   groups?: Group[];
+}
+
+export type CostCategory = 'CUSTO' | 'OUTROS' | 'DEV' | 'DESCONTO';
+export type CostKind = 'FIXED' | 'HOURLY';
+
+export interface CostItem {
+  id: string;
+  projectId: string;
+  name: string;
+  category: CostCategory;
+  kind: CostKind;
+  amount: number;
+  hours: number | null;
+  position: number;
+  createdAt: string;
+}
+
+export interface CostTemplate {
+  id: string;
+  name: string;
+  category: CostCategory;
+  kind: CostKind;
+  amount: number;
+  hours: number | null;
+}
+
+export interface CalcSettings {
+  defaultHourlyRate: number;
+  defaultMargin: number;
+}
+
+// Categoria de período de cobrança (ex: "Pago"), reutilizável por usuário
+export interface PeriodCategory {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// Lançamento de período: registro histórico de um intervalo de datas do projeto
+export interface CostPeriod {
+  id: string;
+  projectId: string;
+  categoryId: string | null;
+  category: PeriodCategory | null;
+  label: string | null;
+  startDate: string;
+  endDate: string;
+  hours: number;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+  items: CostItem[]; // custos arquivados neste lançamento
 }
 
 export interface Group {

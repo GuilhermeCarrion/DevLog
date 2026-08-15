@@ -1,6 +1,13 @@
 'use client';
 
-import { CalendarDays, FolderKanban, LogOut, NotebookPen, Timer } from 'lucide-react';
+import {
+  Calculator,
+  CalendarDays,
+  FolderKanban,
+  LogOut,
+  NotebookPen,
+  Timer,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLogout, useMe } from '@/hooks/use-auth';
@@ -11,6 +18,7 @@ const NAV = [
   { href: '/agenda', label: 'Agenda', icon: CalendarDays },
   { href: '/sessoes', label: 'Sessões', icon: Timer },
   { href: '/notas', label: 'Notas', icon: NotebookPen },
+  { href: '/calculadora', label: 'Calculadora', icon: Calculator },
 ];
 
 export function Sidebar() {

@@ -22,7 +22,7 @@ export default function AppLayout({
             <ActiveSessionBadge />
             <NewSessionButton />
           </header>
-          <main className="mx-auto w-full max-w-5xl flex-1 p-6">{children}</main>
+          <main className="mx-auto w-full max-w-6xl flex-1 p-6">{children}</main>
         </div>
       </div>
     </AuthGate>

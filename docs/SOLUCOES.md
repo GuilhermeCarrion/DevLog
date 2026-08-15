@@ -293,6 +293,50 @@
 
 ---
 
+## Calculadora de preço + padronização de botões (10/08/2026)
+
+**Calculadora de precificação por projeto** — feature nova para sugerir quanto cobrar de clientes.
+
+*Modelo* ([schema.prisma](../apps/api/prisma/schema.prisma), migration `20260805120000_calculadora_custos`): enums `CostCategory` (CUSTO/OUTROS/DEV/DESCONTO) e `CostKind` (FIXED/HOURLY); `CostItem` (por projeto), `CostTemplate` (reutilizável por usuário), `Project.marginPercent` (override), `User.defaultHourlyRate`/`defaultMargin` (defaults globais). Migração aditiva gerada via `migrate diff` (Docker-independente). *Atenção:* o `2>&1` no diff polui o .sql com banner do Prisma — gerar sempre com stdout puro; e se um `migrate deploy` falhar no meio, usar `migrate resolve --rolled-back` antes de re-aplicar.
+
+*Backend* ([costs/](../apps/api/src/costs)): CRUD de itens por projeto, de templates e das settings globais, tudo escopado por usuário.
+
+*Fórmula* ([calc.ts](../apps/web/src/lib/calc.ts)): `subtotal = custos + outros + mão de obra` (mão de obra = valor/hora × horas; horas nulas puxam da soma das sessões concluídas do projeto). `preço = subtotal × (1 + margem%) − descontos`. Cada categoria tem cor própria ("mais cores para informações"): Custo azul, Outros violeta, Dev lima, Desconto rosa.
+
+*UI*: tela global **Calculadora** na sidebar (defaults + custos padrão reutilizáveis); no projeto, um **card resumido** ([calc-card.tsx](../apps/web/src/components/calc/calc-card.tsx)) acima de Notas & recados com preço sugerido + mini-breakdown colorido, e um **editor em tabela** ([calc-editor.tsx](../apps/web/src/components/calc/calc-editor.tsx)) com recálculo ao vivo, importação de padrões, edição de margem e descontos. Layout do projeto alargado (`max-w-6xl`). Verificado com o exemplo Moven-TCC: custos 100 + outros 40 + dev 150 = 290, +30% = **R$ 377**; com desconto de R$27 → R$ 350; margem 50% → R$ 408.
+
+**Padronização dos botões de Tasks** ([tasks-tab.tsx](../apps/web/src/components/tasks/tasks-tab.tsx)): filtros, "Concluídas", "Grupo" e "Nova task" numa linha só, todos na mesma altura (h-9) dos selects. O antigo checkbox "Mostrar concluídas" virou um **botão toggle** ("Concluídas") que fica em accent lima (variant default, igual "Nova task") quando ativo.
+
+**Ajustes da calculadora (11/08/2026):**
+- *Campo numérico sem setinhas* ([number-input.tsx](../apps/web/src/components/ui/number-input.tsx)): `NumberInput` usa `type="text"` + `inputMode="decimal"` (a pedido, 13/08) — sem qualquer botão de incremento/decremento (nem nativo nem customizado), garantido em todo browser/OS; mantém o teclado numérico no mobile e a opção `onCommit` (commita no blur para não disparar request a cada tecla). Aplicado em todos os campos numéricos da calculadora.
+- *Gestão vira aba* ([calc-tab.tsx](../apps/web/src/components/calc/calc-tab.tsx)): o antigo editor em dialog virou uma **terceira aba do projeto** (Tasks / Sessões / **Calculadora**), em tela cheia. Design refeito: custos **agrupados por categoria** (seções coloridas com subtotal por categoria), itens espaçosos com editar/excluir inline. Nessa aba **não há notas nem o totalizador** (a pedido). O card de resumo (`CalcCard`, agora com a **margem editável**) e as notas continuam nas abas Tasks/Sessões; o botão "Gerenciar" do card navega para `?tab=calc`. O `CalcEditor` (dialog) foi removido.
+
+---
+
+## Calculadora — cálculo por período + histórico de cobrança (13/08/2026)
+
+**Contexto:** a mão de obra somava o **total** de horas de todas as sessões do projeto. Passou a poder trabalhar com **períodos** (intervalo de datas) e a guardar um **histórico de lançamentos** (ex: pagamentos).
+
+*Modelo* ([schema.prisma](../apps/api/prisma/schema.prisma), migration `20260813120000_periodos_de_cobranca`): `PeriodCategory` (categoria com cor, reutilizável por usuário — `@@unique([userId,name])`, criada no espírito dos grupos de task) e `CostPeriod` (lançamento por projeto: `category?`, `label?`, `startDate`/`endDate`, `hours`/`amount` **snapshot**, `note?`). `categoryId` é `onDelete: SetNull` — excluir a categoria não apaga o histórico. Migração aditiva gerada via `migrate diff` e aplicada direto no Postgres do Docker + `migrate resolve --applied` (o `migrate dev` queria resetar o banco por causa de um checksum divergente na migration anterior — evitado para não perder dados locais).
+
+*Backend* ([costs/](../apps/api/src/costs)): o `CostsModule` ganhou CRUD de `period-categories` (por usuário) e de `periods` (por projeto), tudo escopado por usuário com os mesmos `assert*` de ownership.
+
+*Filtro de período* ([calc.ts](../apps/web/src/lib/calc.ts)): `sessionsToHours(sessions, range?)` e `sessionInRange()` — uma sessão conta se **começou** dentro de `[from, to]` (`to` inclusivo até o fim do dia). Range vazio = total do projeto (comportamento antigo preservado). O `autoHours` da aba passa a derivar do range selecionado.
+
+*Snapshot vs. ao vivo:* `hours`/`amount` do lançamento são congelados no momento de salvar (registro de pagamento não muda se sessões forem editadas depois). Os detalhes ([period-details-dialog.tsx](../apps/web/src/components/calc/period-details-dialog.tsx)) ainda **listam ao vivo** as sessões que caíram no intervalo salvo, para conferência.
+
+*UI* ([periods-section.tsx](../apps/web/src/components/calc/periods-section.tsx)): abaixo do formulário de adicionar custos, uma seção com **filtro de intervalo** (De/Até + horas do período), botão **"Salvar período"** (form inline pré-preenchido com horas e valor = horas × valor/hora padrão, editáveis), **histórico** clicável (dot da cor da categoria, rótulo, intervalo, horas, valor) com editar/excluir inline e **dialog de detalhes**. Categorias são criadas inline por um dialog ([period-category-dialog.tsx](../apps/web/src/components/calc/period-category-dialog.tsx)) espelhando o de grupo (nome + `ColorPicker`).
+
+*Ajuste visual:* no card "Custos lançados" da aba, o título e "X h em sessões" voltaram para a **mesma linha** (era `flex-row` sozinho — sem `flex` — que empilhava; virou `flex items-center justify-between`).
+
+**Redesenho do período — arquivar/limpar/reabrir (14/08/2026):** o período deixou de ser só um snapshot de valores e passou a **arquivar os custos lançados**. `CostItem` ganhou `periodId String?` (migration `20260814120000_arquivar_custos_no_periodo`): `null` = item ativo (na lista "Custos lançados"), preenchido = arquivado num período (fora do cálculo atual). Fluxo:
+- *Salvar período* ([costs.service.ts](../apps/api/src/costs/costs.service.ts) `createPeriod`, transação): cria o lançamento e faz `updateMany` dos itens ativos → `periodId` do período, **limpando** a lista ativa. `listItems` passou a filtrar `periodId: null`.
+- *Reabrir* (`POST /periods/:id/reopen`): devolve os itens para a lista ativa (`periodId → null`) e apaga o lançamento — é o "Editar" do histórico (volta pra área de trabalho, a pedido). *Excluir* apaga o lançamento **e** os itens arquivados nele.
+- *Detalhes* ([period-details-dialog.tsx](../apps/web/src/components/calc/period-details-dialog.tsx)): lista os custos arquivados (o `include: { items }` acompanha o período) + botão "Reabrir para editar".
+- *Horas informadas:* o campo "0.0h em sessões" e o prefill do formulário passaram a usar `result.devHoras` (mão de obra efetiva = horas digitadas nos itens Dev, caindo pras sessões só quando em branco), não mais o total bruto de sessões.
+
+---
+
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)
 
 **Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`

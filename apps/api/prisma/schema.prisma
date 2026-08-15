@@ -19,10 +19,16 @@ model User {
   password  String // hash bcrypt — nunca retornar em responses
   createdAt DateTime @default(now())
 
-  projects    Project[]
-  notes       Note[]
-  agendaItems AgendaItem[]
-  tags        Tag[]
+  // Defaults globais da calculadora de preço
+  defaultHourlyRate Float @default(0) // valor/hora pré-preenchido em itens Dev
+  defaultMargin     Float @default(30) // margem % sugerida
+
+  projects         Project[]
+  notes            Note[]
+  agendaItems      AgendaItem[]
+  tags             Tag[]
+  costTemplates    CostTemplate[]
+  periodCategories PeriodCategory[]
 }
 
 // ============ Núcleo ============
@@ -34,6 +40,8 @@ model Project {
   createdAt   DateTime @default(now())
   archived    Boolean  @default(false)
 
+  marginPercent Float? // override da margem da calculadora (null = usa default do usuário)
+
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
@@ -44,7 +52,87 @@ model Project {
   notes         Note[]
   reports       Report[]
   agendaItems   AgendaItem[]
+  costItems     CostItem[]
+  costPeriods   CostPeriod[]
   reportProfile ReportProfile?
+}
+
+// ============ Calculadora de preço ============
+
+enum CostCategory {
+  CUSTO // infra e manutenções (fora do código)
+  OUTROS // ferramentas, estudos, cursos, deslocamento
+  DEV // mão de obra (valor/hora × horas)
+  DESCONTO // abatimento no preço final
+}
+
+enum CostKind {
+  FIXED // valor fixo (ex: VPS R$50)
+  HOURLY // valor/hora × horas (ex: Dev R$5 × 30h)
+}
+
+// Item de custo dentro do cálculo de um projeto.
+// `periodId == null` → item ativo (na lista "Custos lançados").
+// `periodId != null` → arquivado num lançamento de período (fora do cálculo atual).
+model CostItem {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id])
+  name      String
+  category  CostCategory @default(CUSTO)
+  kind      CostKind     @default(FIXED)
+  amount    Float // FIXED: o valor; HOURLY: o valor/hora
+  hours     Float? // HOURLY: qtd de horas (null = puxa das sessões do projeto)
+  position  Int          @default(0)
+  createdAt DateTime     @default(now())
+
+  periodId String?
+  period   CostPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+}
+
+// Custo padrão reutilizável do usuário (ex: "Claude Plus parcial" → 50)
+model CostTemplate {
+  id       String       @id @default(cuid())
+  userId   String
+  user     User         @relation(fields: [userId], references: [id])
+  name     String
+  category CostCategory @default(CUSTO)
+  kind     CostKind     @default(FIXED)
+  amount   Float
+  hours    Float?
+}
+
+// Categoria de período de cobrança (ex: "Pago", "Pendente"), reutilizável por
+// usuário — criada como os grupos de task (nome + cor).
+model PeriodCategory {
+  id      String       @id @default(cuid())
+  name    String
+  color   String // hex, ex: "#a3e635"
+  userId  String
+  user    User         @relation(fields: [userId], references: [id])
+  periods CostPeriod[]
+
+  @@unique([userId, name]) // nomes únicos por usuário
+}
+
+// Lançamento de período: registro histórico (ex: um pagamento) de um intervalo
+// de datas do projeto. `hours`/`amount` são snapshot no momento de salvar — o
+// histórico não muda se as sessões forem editadas depois.
+model CostPeriod {
+  id         String          @id @default(cuid())
+  projectId  String
+  project    Project         @relation(fields: [projectId], references: [id])
+  categoryId String?
+  category   PeriodCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  label      String? // rótulo livre, ex: "Pagamento de agosto"
+  startDate  DateTime
+  endDate    DateTime
+  hours      Float           @default(0) // horas trabalhadas no período (snapshot)
+  amount     Float           @default(0) // valor do período (snapshot)
+  note       String? // detalhes livres do lançamento
+  createdAt  DateTime        @default(now())
+
+  items CostItem[] // custos arquivados neste lançamento (limpos da lista ativa)
 }
 
 // Tag reutilizável, criada pelo usuário e aplicada a vários projetos (M2M).

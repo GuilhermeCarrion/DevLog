@@ -55,6 +55,8 @@ export class ProjectsService {
         name: dto.name,
         description: dto.description,
         archived: dto.archived,
+        marginPercent:
+          dto.marginPercent === undefined ? undefined : dto.marginPercent,
         // tagIds presente (mesmo []) substitui o conjunto; ausente mantém
         tags: dto.tagIds
           ? { set: dto.tagIds.map((tagId) => ({ id: tagId })) }

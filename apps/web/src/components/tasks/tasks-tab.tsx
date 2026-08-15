@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, FolderPlus, Pencil, Plus } from 'lucide-react';
+import { CheckCircle2, Copy, FolderPlus, Pencil, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { GroupDialog } from '@/components/tasks/group-dialog';
@@ -81,6 +81,7 @@ export function TasksTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Barra única de ações — todos os controles na mesma altura (h-9) e identidade */}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={statusFilter}
@@ -107,22 +108,20 @@ export function TasksTab({ projectId }: { projectId: string }) {
             })),
           ]}
         />
-        <label className="flex cursor-pointer select-none items-center gap-1.5 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={showDone}
-            onChange={(e) => setShowDone(e.target.checked)}
-            className="accent-[#a3e635]"
-          />
-          Mostrar concluídas
-        </label>
+        {/* Toggle "Concluídas" — vira accent (igual Nova task) quando ativo */}
+        <Button
+          variant={showDone ? 'default' : 'outline'}
+          onClick={() => setShowDone((v) => !v)}
+        >
+          <CheckCircle2 className="size-4" />
+          Concluídas
+        </Button>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" onClick={openNewGroup}>
+          <Button variant="outline" onClick={openNewGroup}>
             <FolderPlus className="size-4" />
             Grupo
           </Button>
           <Button
-            size="sm"
             onClick={() => {
               setEditing(null);
               setDialogOpen(true);

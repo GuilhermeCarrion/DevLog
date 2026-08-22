@@ -1,9 +1,4 @@
-import {
-  IsArray,
-  IsDateString,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
 
 // Sessão planejada: criada no planejamento semanal, começa sem startedAt
 export class CreatePlannedSessionDto {

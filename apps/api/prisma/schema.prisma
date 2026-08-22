@@ -266,6 +266,9 @@ model Report {
   generatedAt  DateTime     @default(now())
   percentTotal Int
   filePath     String?
+  // Snapshot do contexto renderizado (JSON) — permite rebaixar fiel depois,
+  // independente de tasks/sessões/perfil terem mudado.
+  contextJson  String?
   items        ReportItem[]
 }
 

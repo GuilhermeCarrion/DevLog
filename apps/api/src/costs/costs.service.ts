@@ -268,7 +268,8 @@ export class CostsService {
       where: { id, userId },
       select: { id: true },
     });
-    if (!cat) throw new NotFoundException('Categoria de período não encontrada');
+    if (!cat)
+      throw new NotFoundException('Categoria de período não encontrada');
   }
 
   private async assertPeriod(userId: string, id: string) {

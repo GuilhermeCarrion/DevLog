@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   Res,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { CurrentUser } from './current-user.decorator';
 import type { AuthUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 import { AUTH_COOKIE } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 
@@ -67,6 +69,18 @@ export class AuthController {
   // O front usa esta rota para saber quem está logado (fonte de verdade da sessão)
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
+    return user;
+  }
+
+  // Atualiza os próprios dados; reassina o cookie para a sessão refletir a mudança
+  @Patch('me')
+  async updateMe(
+    @CurrentUser() current: AuthUser,
+    @Body() dto: UpdateMeDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { token, user } = await this.authService.updateMe(current.id, dto);
+    this.setCookie(res, token);
     return user;
   }
 

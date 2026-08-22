@@ -45,11 +45,51 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (text ? JSON.parse(text) : null) as T;
 }
 
+// Request que devolve um arquivo binário (ex: .docx do relatório). Lê o nome do
+// arquivo do Content-Disposition; em erro, extrai a mensagem do JSON do Nest.
+async function requestBlob(
+  path: string,
+  init: RequestInit,
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    let message = `Erro ${res.status}`;
+    try {
+      const b = await res.json();
+      message = Array.isArray(b.message)
+        ? b.message.join('; ')
+        : (b.message ?? message);
+    } catch {
+      /* corpo não-JSON */
+    }
+    throw new ApiError(res.status, message);
+  }
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^"]+)"?/.exec(cd);
+  return { blob: await res.blob(), filename: match?.[1] ?? 'arquivo' };
+}
+
+const postBlob = (path: string, body?: unknown) =>
+  requestBlob(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+  });
+
+const getBlob = (path: string) => requestBlob(path, { method: 'GET' });
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body ?? {}) }),
+  put: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: 'PUT', body: JSON.stringify(body ?? {}) }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  postBlob,
+  getBlob,
 };

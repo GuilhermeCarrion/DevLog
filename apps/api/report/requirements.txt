@@ -1,0 +1,3 @@
+# Geração do relatório semanal (.docx) via template do Word.
+# docxtpl já traz python-docx e jinja2 como dependências.
+docxtpl>=0.20,<0.21

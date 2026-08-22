@@ -337,6 +337,50 @@
 
 ---
 
+## Relatório semanal — geração do .docx via Python (20/08/2026)
+
+**Coração da feature (fase 2):** gerar o relatório da faculdade preenchendo o template real do Word (`docxtpl`), sem recriar layout — só injetando dados. Escopo desta entrega: script Python + endpoint de geração (a tela de revisão/snapshot vem depois).
+
+*Python isolado* ([apps/api/report/](../apps/api/report)): `gerar_relatorio.py` recebe `--template --input(json) --output`, faz `DocxTemplate(...).render(context)` e salva; erros vão pro stderr com exit != 0. Deps num **venv dedicado** no repo (`report/.venv`, `requirements.txt` = `docxtpl`), git-ignored. Template movido pra `report/templates/RAP-TDS-2026_013-template-docxtpl.docx`. Tags confirmadas por inspeção do OOXML: escalares (`grupo_turma`, `aluno`, `ra`, `curso`, `termo`, `semana`, `data`, `percent_total`, `orientador`, `coorientador`, `tema`, `area`) + duas tabelas com `{%tr for item in realizadas/proximas %}` (campos `item.tarefa/status/percent/justificativa`).
+
+*Backend* ([reports/](../apps/api/src/reports)): `POST /projects/:id/reports/generate` recebe intervalo `{from,to}` (**seleção por datas**, a pedido) + overrides opcionais (`semana`, `data`, `percentTotal`). O service monta o `context`: `realizadas` = tasks com sessão executada em `[from,to]` (status derivado `progress==100 → Concluída`, senão `Em andamento`); `proximas` = tasks de sessões planejadas (`startedAt null`, `plannedFor > to`, status `Em espera`); `percent_total` = média de `progress` das tasks `status != FUTURO`. Escreve o context num JSON temp, chama o Python do venv via `execFile` (subprocesso), lê o `.docx` e devolve como `StreamableFile` (download). Caminhos configuráveis por env (`REPORT_PYTHON/SCRIPT/TEMPLATE_PATH`) com defaults resolvidos de `process.cwd()`; binário do venv é `Scripts/python.exe` (Win) ou `bin/python` (Linux). Cabeçalho vem do `ReportProfile` (upsert mínimo em `PUT /projects/:id/report-profile` pra deixar o fluxo testável — tela completa depois).
+
+*Validado:* pipeline Python rodado contra o template real (dados injetados, zero tags Jinja residuais); API compila e sobe com as rotas mapeadas; endpoints 401 sem auth. **Pendência de deploy:** a imagem Docker da API (hoje só Node) precisará de Python + `docxtpl` pro subprocesso rodar em produção.
+
+---
+
+## Relatório (front), dados do usuário e resumo (20/08/2026)
+
+**Tela Relatório** ([relatorio/page.tsx](<../apps/web/src/app/(app)/relatorio/page.tsx>)): seleção de projeto → **config do cabeçalho** (o "JSON": aluno, RA, curso, orientadores, tema… — tudo que não vem de tasks/sessões, em [report-profile-form.tsx](../apps/web/src/components/reports/report-profile-form.tsx), salvo via `PUT /projects/:id/report-profile`) → intervalo De/Até + overrides (semana, % conclusão) → **Gerar e baixar .docx**. O download usa um helper novo `api.postBlob` ([api.ts](../apps/web/src/lib/api.ts)) que lê o binário + `Content-Disposition` e dispara o `<a download>` no browser (o cliente padrão sempre fazia `JSON.parse`, que estouraria num .docx).
+
+**Dados do usuário** ([configuracoes/page.tsx](<../apps/web/src/app/(app)/configuracoes/page.tsx>), `PATCH /auth/me`): alterar nome/email/senha. Alterar email ou senha exige a **senha atual** (bcrypt.compare no service); o token é **reassinado** e o cookie reescrito, pois o JWT carrega name/email — sem isso a sessão mostraria dados velhos. O front faz `setQueryData(['me'])` no sucesso.
+
+**Resumo** (`GET /summary`, [summary/](../apps/api/src/summary)): agregação numa leitura só (volume pessoal, cálculo em JS) — nº de projetos (ativos/total), conclusão média (progress das tasks ≠ FUTURO), total cobrado (Σ `CostPeriod.amount`), horas registradas, tasks, sessões, anotações + breakdown por projeto (com barra de progresso). Exibido em stat tiles na tela de Configurações.
+
+**Sidebar:** entradas novas "Relatório" e "Configurações"; o bloco do usuário no rodapé virou link pra Configurações.
+
+**Limpeza de lint (aproveitando):** tipados `jwt-auth.guard.ts` / `current-user.decorator.ts` (removido `any` do `req.user`/payload do JWT) e `void bootstrap()` no `main.ts` — eram erros de lint **pré-existentes** na API. O e2e ([app.e2e-spec.ts](../apps/api/test/app.e2e-spec.ts)) foi trocado do scaffold (`GET / → "Hello World"`, quebrado) para testar o `/health` real + 401 nas rotas novas (4 testes passando). *Nota:* o lint do **web** segue vermelho por uma regra do Next 16 (`react-hooks/set-state-in-effect`) que pega o padrão de sincronizar form no `useEffect(open)` — usado em ~11 telas pré-existentes; não refatorado aqui.
+
+---
+
+## Relatório — tela de revisão + histórico (21/08/2026)
+
+**Contexto:** o relatório gerava "às cegas" (datas → .docx). Virou um fluxo de **revisão** (pré-relatório) editável antes de gerar, atendendo dois pedidos: escolher as tasks de "Próximas" e trazer a explicação das **sessões** para a justificativa.
+
+*Candidatos* (`GET /projects/:id/reports/candidates?from&to`, [reports.service.ts](../apps/api/src/reports/reports.service.ts) `getCandidates`): devolve `realizadas`/`proximas` sugeridas (mesma derivação de antes, agora reutilizada em `deriveRealizadas`/`deriveProximas`), **todas as tasks** do projeto (para adicionar/preview) e as **sessões do intervalo** (painel lateral).
+
+*Geração com linhas editadas:* `POST .../reports/generate` passou a aceitar `realizadas`/`proximas` (arrays de `ReportRowDto`) — se presentes, o backend usa direto (via `stripRow`); se ausentes, deriva (retrocompatível). A justificativa editada **não altera a task** (vive só no request/snapshot).
+
+*Snapshot + histórico:* `Report.contextJson` (migration `20260821120000_relatorio_snapshot`) guarda o contexto renderizado. `generate` cria um `Report` com o JSON; `GET .../reports` lista o histórico; `GET .../reports/:id/download` **rebaixa** re-renderizando o snapshot (fiel mesmo se tasks/perfil mudarem depois). Não guarda arquivo em disco — regenera do JSON.
+
+*UI de revisão* ([report-review.tsx](../apps/web/src/components/reports/report-review.tsx)): duas colunas — linhas editáveis (status/%, justificativa em textarea) + **painel lateral de sessões**. Cada sessão tem "Inserir" (anexa a nota na justificativa da linha em foco — controle por `focused {section,index}`) e "Copiar" (clipboard). Próximas têm **checkbox** incluir/excluir (auto + marcar/desmarcar), **Adicionar task** (select das restantes) e **+ linha manual** (também em Realizadas). Clicar no título da task abre um **modal** ([task-preview-dialog.tsx](../apps/web/src/components/reports/task-preview-dialog.tsx)) com descrição/notas/sessões, sem sair da tela. Download binário via `api.getBlob`/`postBlob` ([api.ts](../apps/web/src/lib/api.ts)).
+
+*Cor por grupo (visual):* o `candidates` passou a trazer a cor do grupo de cada task (e das tasks nas sessões). Cada linha ganhou **faixa lateral de 4px** na cor do grupo + **chip do grupo** ao lado do título (mesmo padrão da aba de Tasks), **dot colorido no status** (Concluída lima / Em andamento âmbar / Em espera cinza) e **chips tingidos** no painel de sessões — mais legível sem poluir.
+
+*Validado:* API tsc/lint limpos, e2e 4/4, rotas mapeadas + 401 sem auth, tela `/relatorio` compila. Pipeline Python inalterado (mesmas chaves de contexto).
+
+---
+
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)
 
 **Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`

@@ -41,6 +41,22 @@ export function useRegister() {
   });
 }
 
+export interface UpdateMeInput {
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
+export function useUpdateMe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateMeInput) => api.patch<User>('/auth/me', data),
+    // Atualiza o cache da sessão na hora (sidebar/AuthGate refletem o novo nome)
+    onSuccess: (user) => queryClient.setQueryData(['me'], user),
+  });
+}
+
 export function useLogout() {
   const router = useRouter();
   const queryClient = useQueryClient();

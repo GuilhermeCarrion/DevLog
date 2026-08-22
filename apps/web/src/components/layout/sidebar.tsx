@@ -3,9 +3,11 @@
 import {
   Calculator,
   CalendarDays,
+  FileText,
   FolderKanban,
   LogOut,
   NotebookPen,
+  Settings,
   Timer,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -19,6 +21,8 @@ const NAV = [
   { href: '/sessoes', label: 'Sessões', icon: Timer },
   { href: '/notas', label: 'Notas', icon: NotebookPen },
   { href: '/calculadora', label: 'Calculadora', icon: Calculator },
+  { href: '/relatorio', label: 'Relatório', icon: FileText },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
 export function Sidebar() {
@@ -59,12 +63,16 @@ export function Sidebar() {
 
       <div className="border-t border-border p-3">
         <div className="flex items-center justify-between gap-2 px-1">
-          <div className="min-w-0">
+          <Link
+            href="/configuracoes"
+            className="min-w-0 rounded-md px-1 py-0.5 transition-colors hover:bg-accent"
+            title="Configurações"
+          >
             <p className="truncate text-sm font-medium">{me?.name ?? '…'}</p>
             <p className="truncate text-xs text-muted-foreground">
               {me?.email}
             </p>
-          </div>
+          </Link>
           <button
             onClick={() => logout.mutate()}
             title="Sair"

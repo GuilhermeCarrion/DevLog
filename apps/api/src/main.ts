@@ -15,9 +15,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Valida DTOs em todas as rotas; whitelist descarta campos não declarados
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   // O front roda em outra origem e envia cookies (credentials).
   // Em produção, WEB_ORIGIN = URL do app na Vercel.
@@ -28,4 +26,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3001);
 }
-bootstrap();
+void bootstrap();

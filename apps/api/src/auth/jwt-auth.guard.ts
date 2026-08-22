@@ -7,9 +7,17 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import type { AuthUser } from './current-user.decorator';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 export const AUTH_COOKIE = 'devlog_token';
+
+// Payload assinado em signToken (AuthService)
+interface JwtPayload {
+  sub: string;
+  email: string;
+  name: string;
+}
 
 // Guard global (registrado como APP_GUARD no AuthModule):
 // toda rota exige JWT válido no cookie httpOnly, exceto as marcadas com @Public()
@@ -27,14 +35,19 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const request = context.switchToHttp().getRequest<Request>();
-    const token = request.cookies?.[AUTH_COOKIE];
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
+    // cookie-parser tipa request.cookies como any → forçamos o tipo do token
+    const token = (request.cookies as Record<string, string> | undefined)?.[
+      AUTH_COOKIE
+    ];
     if (!token) throw new UnauthorizedException('Não autenticado');
 
     try {
-      const payload = await this.jwtService.verifyAsync(token);
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       // Disponibiliza o usuário para o @CurrentUser()
-      (request as any).user = {
+      request.user = {
         id: payload.sub,
         email: payload.email,
         name: payload.name,

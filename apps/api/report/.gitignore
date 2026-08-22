@@ -1,0 +1,6 @@
+# Ambiente Python isolado e artefatos gerados — não versionar
+.venv/
+out/
+__pycache__/
+*.pyc
+*.tmp.json

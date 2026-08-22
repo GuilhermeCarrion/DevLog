@@ -1,0 +1,35 @@
+{
+  "grupo_turma": "TDS-2026-013",
+  "aluno": "Guilherme Carrion Caldeira Ribeiro",
+  "ra": "219693",
+  "curso": "Tecnologia em Desenvolvimento de Sistemas",
+  "termo": "5º",
+  "semana": "20/2026",
+  "data": "20/07/2026",
+  "percent_total": 32,
+  "orientador": "Prof. Hericson Dos Santos",
+  "coorientador": "Prof. Francisco Antonio De Sousa",
+  "tema": "Sistema de Gestão e automações para Academias",
+  "area": "Sistema de Gestão e Serviços",
+  "realizadas": [
+    {
+      "tarefa": "Modelagem do schema Prisma",
+      "status": "Concluída",
+      "percent": 100,
+      "justificativa": "Modelos de Projeto, Task e Sessão definidos e migrados."
+    },
+    {
+      "tarefa": "Fluxo de sessão rápida",
+      "status": "Em andamento",
+      "percent": 40,
+      "justificativa": "Início rápido em 2 cliques funcionando; captura em ajuste."
+    }
+  ],
+  "proximas": [
+    {
+      "tarefa": "Tela de geração de relatório",
+      "status": "Em espera",
+      "justificativa": "Montar a tela de revisão e integrar com o script Python."
+    }
+  ]
+}

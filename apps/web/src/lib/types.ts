@@ -80,6 +80,91 @@ export interface CostPeriod {
   items: CostItem[]; // custos arquivados neste lançamento
 }
 
+// Metadados fixos do cabeçalho do relatório (o que não vem de tasks/sessões)
+export interface ReportProfile {
+  id: string;
+  projectId: string;
+  grupoTurma: string;
+  aluno: string;
+  ra: string;
+  curso: string;
+  termo: string;
+  orientador: string;
+  coorientador: string | null;
+  tema: string;
+  area: string;
+}
+
+// Linha editável de uma tabela do relatório (realizadas / próximas)
+export interface ReportRow {
+  taskId?: string | null; // null = linha manual
+  tarefa: string;
+  status: string;
+  percent?: number | null;
+  justificativa: string;
+}
+
+export interface ReportCandidateTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  progress: number;
+  description: string | null;
+  notes: string | null;
+  group: { name: string; color: string } | null;
+}
+
+export interface ReportCandidateSession {
+  id: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  notes: string;
+  tasks: { id: string; title: string; color: string | null }[];
+}
+
+export interface ReportCandidates {
+  realizadas: (ReportRow & { taskId: string })[];
+  proximas: (ReportRow & { taskId: string })[];
+  tasks: ReportCandidateTask[];
+  sessions: ReportCandidateSession[];
+  suggestedPercentTotal: number;
+  suggestedSemana: string;
+  suggestedData: string;
+}
+
+export interface ReportHistoryItem {
+  id: string;
+  week: string;
+  generatedAt: string;
+  percentTotal: number;
+}
+
+// Resumo agregado do usuário (tela de Configurações → Resumo)
+export interface SummaryProject {
+  id: string;
+  name: string;
+  archived: boolean;
+  tasks: number;
+  sessions: number;
+  periods: number;
+  hours: number;
+  billed: number;
+  progress: number;
+}
+
+export interface Summary {
+  projects: number;
+  activeProjects: number;
+  tasks: number;
+  sessions: number;
+  notes: number;
+  periods: number;
+  totalHours: number;
+  totalBilled: number;
+  avgProgress: number;
+  perProject: SummaryProject[];
+}
+
 export interface Group {
   id: string;
   name: string;

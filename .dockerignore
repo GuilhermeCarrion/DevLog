@@ -7,3 +7,8 @@ node_modules
 **/.env
 **/.env.local
 *.log
+# venv Python local (Windows) e artefatos — a imagem cria um venv Linux próprio
+**/report/.venv
+**/report/out
+**/__pycache__
+**/*.pyc

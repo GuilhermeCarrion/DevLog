@@ -43,6 +43,8 @@ Não precisa rodar migration aqui — o container da API roda `prisma migrate de
    | `WEB_ORIGIN` | URL do app na Vercel (preenche depois do passo 3) |
    - Não defina `PORT` — o Render injeta sozinho, e o `main.ts` já usa `process.env.PORT`.
 4. **Create Web Service** → aguarde build + deploy. Copie a URL pública (ex: `https://devlog-api.onrender.com`). Essa é a **URL da API**.
+
+> **Relatório (.docx via Python):** o `Dockerfile` já instala Python 3 + venv, copia `apps/api/report/` (script + template) e cria um venv Linux com `docxtpl` no build. Não precisa de configuração extra no Render — os caminhos default do `ReportsService` (`REPORT_PYTHON/SCRIPT/TEMPLATE_PATH`) resolvem a partir do `process.cwd()` do container (`/app/apps/api`). Se algum dia mudar o template, ele só precisa estar versionado em `apps/api/report/templates/` (o `.venv`/`out` locais ficam de fora via `.dockerignore`).
 5. Teste: abra `<URL da API>/health` → deve responder `{"status":"ok"}` (a primeira request pode demorar ~50s se o serviço estava dormindo).
 
 > **Tier free do Render**: o serviço dorme após ~15 min sem tráfego e acorda em ~50s na requisição seguinte. Normal para uso pessoal.

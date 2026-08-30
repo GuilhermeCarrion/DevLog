@@ -21,7 +21,10 @@ RUN npm run build --workspace api
 
 # ---- runner ----
 FROM node:20-slim AS runner
-RUN apt-get update -y && apt-get install -y openssl
+# openssl: Prisma engine | python3 + venv: geração do relatório (.docx via docxtpl)
+RUN apt-get update -y \
+  && apt-get install -y openssl python3 python3-venv \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -31,6 +34,15 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+# Script Python + requirements + template do relatório. O .venv/out locais ficam
+# de fora (via .dockerignore) — a imagem cria um venv Linux próprio abaixo.
+COPY --from=build /app/apps/api/report ./apps/api/report
+
+# venv Linux com docxtpl — o subprocesso do relatório usa report/.venv/bin/python
+# (o ReportsService resolve `bin/python` fora do Windows).
+RUN python3 -m venv /app/apps/api/report/.venv \
+  && /app/apps/api/report/.venv/bin/pip install --no-cache-dir \
+  -r /app/apps/api/report/requirements.txt
 
 WORKDIR /app/apps/api
 # Render injeta PORT; o main.ts usa process.env.PORT.

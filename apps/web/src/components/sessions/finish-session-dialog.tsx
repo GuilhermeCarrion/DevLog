@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useFinishSession } from '@/hooks/use-sessions';
+import { TaskSelectList } from '@/components/tasks/task-select-list';
+import { useCompletePlan, useFinishSession } from '@/hooks/use-sessions';
 import { useTasks } from '@/hooks/use-tasks';
 import type { WorkSession } from '@/lib/types';
 
@@ -29,11 +30,14 @@ export function FinishSessionDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const finish = useFinishSession();
+  const completePlan = useCompletePlan();
   const { data: tasks } = useTasks(session.projectId);
   const [notes, setNotes] = useState('');
   const [commits, setCommits] = useState('');
   const [nextStep, setNextStep] = useState('');
   const [taskIds, setTaskIds] = useState<string[]>([]);
+  // Ao encerrar, opcionalmente conclui o plano/sprint de origem (não trabalha mais nele)
+  const [concludePlan, setConcludePlan] = useState(false);
 
   // Pré-preenche com o que a sessão já acumulou (captura rápida / planejamento)
   useEffect(() => {
@@ -42,6 +46,7 @@ export function FinishSessionDialog({
       setCommits(session.commits ?? '');
       setNextStep(session.nextStep ?? '');
       setTaskIds(session.tasks.map((t) => t.id));
+      setConcludePlan(false);
     }
   }, [open, session]);
 
@@ -64,8 +69,22 @@ export function FinishSessionDialog({
       },
       {
         onSuccess: () => {
-          onOpenChange(false);
-          toast.success('Sessão encerrada!');
+          // Opcionalmente conclui o plano de origem no mesmo fluxo
+          if (concludePlan && session.parentId) {
+            completePlan.mutate(session.parentId, {
+              onSuccess: () => {
+                onOpenChange(false);
+                toast.success('Sessão encerrada e plano concluído!');
+              },
+              onError: (e) => {
+                onOpenChange(false);
+                toast.error(`Sessão encerrada, mas falhou ao concluir o plano: ${e.message}`);
+              },
+            });
+          } else {
+            onOpenChange(false);
+            toast.success('Sessão encerrada!');
+          }
         },
         onError: (e) => toast.error(e.message),
       },
@@ -85,22 +104,11 @@ export function FinishSessionDialog({
         {tasks && tasks.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <Label>Tasks trabalhadas</Label>
-            <div className="flex max-h-36 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2">
-              {tasks.map((t) => (
-                <label
-                  key={t.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent"
-                >
-                  <input
-                    type="checkbox"
-                    checked={taskIds.includes(t.id)}
-                    onChange={() => toggleTask(t.id)}
-                    className="accent-[#a3e635]"
-                  />
-                  <span className="truncate">{t.title}</span>
-                </label>
-              ))}
-            </div>
+            <TaskSelectList
+              tasks={tasks}
+              selectedIds={taskIds}
+              onToggle={toggleTask}
+            />
           </div>
         )}
 
@@ -138,12 +146,37 @@ export function FinishSessionDialog({
           />
         </div>
 
+        {session.parent && (
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={concludePlan}
+              onChange={(e) => setConcludePlan(e.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>
+              Concluir o plano{' '}
+              <span className="font-medium">
+                {session.parent.name || 'sem nome'}
+              </span>{' '}
+              <span className="text-muted-foreground">
+                — não vou mais trabalhar nele (sai das sessões planejadas).
+              </span>
+            </span>
+          </label>
+        )}
+
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleFinish} disabled={finish.isPending}>
-            {finish.isPending ? 'Encerrando…' : 'Encerrar sessão'}
+          <Button
+            onClick={handleFinish}
+            disabled={finish.isPending || completePlan.isPending}
+          >
+            {finish.isPending || completePlan.isPending
+              ? 'Encerrando…'
+              : 'Encerrar sessão'}
           </Button>
         </DialogFooter>
       </DialogContent>

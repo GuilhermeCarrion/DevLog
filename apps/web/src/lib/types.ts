@@ -191,9 +191,16 @@ export interface WorkSession {
   id: string;
   projectId: string;
   project: { id: string; name: string };
+  name: string | null; // nome do plano/sprint (nos templates)
   plannedFor: string | null;
   startedAt: string | null;
   endedAt: string | null;
+  accumulatedSeconds: number; // tempo ativo acumulado (exclui pausas)
+  runningSince: string | null; // início do segmento em andamento (null = pausada/parada)
+  plannedDoneAt: string | null; // plano concluído
+  parentId: string | null;
+  parent: { id: string; name: string | null } | null; // plano/sprint de origem
+  _count?: { children: number };
   notes: string | null;
   commits: string | null;
   nextStep: string | null;
@@ -205,13 +212,27 @@ export interface WorkSession {
   }[];
 }
 
-// Status derivado da sessão (regra da spec — nunca persistido)
-export type SessionStatus = 'planejada' | 'ativa' | 'concluida';
+// Status derivado da sessão (nunca persistido)
+export type SessionStatus =
+  | 'plano' // template ativo (startedAt null)
+  | 'plano_concluido'
+  | 'ativa'
+  | 'pausada'
+  | 'concluida';
 
 export function sessionStatus(s: WorkSession): SessionStatus {
-  if (!s.startedAt) return 'planejada';
-  if (!s.endedAt) return 'ativa';
+  if (!s.startedAt) return s.plannedDoneAt ? 'plano_concluido' : 'plano';
+  if (!s.endedAt) return s.runningSince ? 'ativa' : 'pausada';
   return 'concluida';
+}
+
+// Segundos trabalhados: acumulado + segmento em andamento (se rodando)
+export function sessionElapsedSeconds(s: WorkSession, nowMs: number): number {
+  let secs = s.accumulatedSeconds;
+  if (s.runningSince && !s.endedAt) {
+    secs += Math.max(0, Math.floor((nowMs - new Date(s.runningSince).getTime()) / 1000));
+  }
+  return secs;
 }
 
 export interface Note {

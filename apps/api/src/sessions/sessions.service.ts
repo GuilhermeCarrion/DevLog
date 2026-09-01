@@ -14,6 +14,9 @@ import {
 
 const SESSION_INCLUDE = {
   project: { select: { id: true, name: true } },
+  // plano/sprint de origem (para o vínculo "parte de: <plano>")
+  parent: { select: { id: true, name: true } },
+  _count: { select: { children: true } },
   tasks: {
     select: {
       id: true,
@@ -24,6 +27,12 @@ const SESSION_INCLUDE = {
     },
   },
 } as const;
+
+// Segundos decorridos de um segmento em andamento (>= 0)
+function segmentSeconds(runningSince: Date | null): number {
+  if (!runningSince) return 0;
+  return Math.max(0, Math.floor((Date.now() - runningSince.getTime()) / 1000));
+}
 
 @Injectable()
 export class SessionsService {
@@ -40,16 +49,18 @@ export class SessionsService {
     });
   }
 
-  // Sessões planejadas ainda não iniciadas — alimentam o botão "Sessão planejada"
+  // Planos/sprints ativos (templates): startedAt null e ainda não concluídos.
+  // Alimentam a lista "Sessão planejada" e podem ser iniciados N vezes.
   planned(userId: string) {
     return this.prisma.workSession.findMany({
-      where: { project: { userId }, startedAt: null },
+      where: { project: { userId }, startedAt: null, plannedDoneAt: null },
       include: SESSION_INCLUDE,
       orderBy: { plannedFor: 'asc' },
     });
   }
 
-  // Sessão ativa (startedAt != null && endedAt == null) — no máximo uma por usuário
+  // Sessão aberta (startedAt != null && endedAt == null) — inclui pausada.
+  // No máximo uma por usuário.
   active(userId: string) {
     return this.prisma.workSession.findFirst({
       where: { project: { userId }, startedAt: { not: null }, endedAt: null },
@@ -57,11 +68,13 @@ export class SessionsService {
     });
   }
 
+  // Cria um plano/sprint (template): startedAt null, com nome opcional
   async createPlanned(userId: string, dto: CreatePlannedSessionDto) {
     await this.assertProject(userId, dto.projectId);
     return this.prisma.workSession.create({
       data: {
         projectId: dto.projectId,
+        name: dto.name,
         plannedFor: new Date(dto.plannedFor),
         notes: dto.notes,
         tasks: dto.taskIds?.length
@@ -75,22 +88,87 @@ export class SessionsService {
   async quickStart(userId: string, dto: QuickStartDto) {
     await this.assertProject(userId, dto.projectId);
     await this.assertNoActive(userId);
+    const now = new Date();
     return this.prisma.workSession.create({
-      data: { projectId: dto.projectId, startedAt: new Date() },
+      data: { projectId: dto.projectId, startedAt: now, runningSince: now },
       include: SESSION_INCLUDE,
     });
   }
 
-  // Inicia uma sessão planejada: só marca startedAt — tasks/notas já vêm do planejamento
+  // Inicia uma sessão A PARTIR de um plano/sprint: cria uma NOVA sessão
+  // trabalhada que herda as tasks e a nota do plano. O plano continua na lista
+  // (pode ser iniciado N vezes) até ser marcado como concluído.
   async start(userId: string, id: string) {
-    const session = await this.findOwned(userId, id);
-    if (session.startedAt) {
-      throw new ConflictException('Sessão já foi iniciada');
+    const plan = await this.findOwned(userId, id);
+    if (plan.startedAt) {
+      throw new ConflictException('Isso não é um plano — já é uma sessão.');
     }
     await this.assertNoActive(userId);
+    const full = await this.prisma.workSession.findUnique({
+      where: { id },
+      include: { tasks: { select: { id: true } } },
+    });
+    const now = new Date();
+    return this.prisma.workSession.create({
+      data: {
+        projectId: plan.projectId,
+        startedAt: now,
+        runningSince: now,
+        parentId: plan.id,
+        notes: plan.notes, // herda a nota inicial do plano
+        tasks: full?.tasks.length
+          ? { connect: full.tasks.map((t) => ({ id: t.id })) }
+          : undefined,
+      },
+      include: SESSION_INCLUDE,
+    });
+  }
+
+  // Marca um plano/sprint como concluído — sai da lista de planejadas.
+  async completePlan(userId: string, id: string) {
+    const plan = await this.findOwned(userId, id);
+    if (plan.startedAt) {
+      throw new ConflictException('Só planos podem ser concluídos aqui.');
+    }
     return this.prisma.workSession.update({
       where: { id },
-      data: { startedAt: new Date() },
+      data: { plannedDoneAt: new Date() },
+      include: SESSION_INCLUDE,
+    });
+  }
+
+  // Pausa uma sessão em andamento: acumula o tempo ativo e zera o segmento.
+  async pause(userId: string, id: string) {
+    const session = await this.findOwned(userId, id);
+    if (!session.startedAt || session.endedAt) {
+      throw new ConflictException('Sessão não está ativa.');
+    }
+    if (!session.runningSince) {
+      throw new ConflictException('Sessão já está pausada.');
+    }
+    return this.prisma.workSession.update({
+      where: { id },
+      data: {
+        accumulatedSeconds:
+          session.accumulatedSeconds + segmentSeconds(session.runningSince),
+        runningSince: null,
+      },
+      include: SESSION_INCLUDE,
+    });
+  }
+
+  // Retoma uma sessão pausada: reabre o segmento em andamento.
+  async resume(userId: string, id: string) {
+    const session = await this.findOwned(userId, id);
+    if (!session.startedAt || session.endedAt) {
+      throw new ConflictException('Sessão não está ativa.');
+    }
+    if (session.runningSince) {
+      throw new ConflictException('Sessão já está em andamento.');
+    }
+    return this.prisma.workSession.update({
+      where: { id },
+      data: { runningSince: new Date() },
       include: SESSION_INCLUDE,
     });
   }
@@ -119,6 +197,10 @@ export class SessionsService {
       where: { id },
       data: {
         endedAt: new Date(),
+        // fecha o segmento em andamento no total ativo
+        accumulatedSeconds:
+          session.accumulatedSeconds + segmentSeconds(session.runningSince),
+        runningSince: null,
         notes: dto.notes ?? undefined,
         commits: dto.commits ?? undefined,
         nextStep: dto.nextStep ?? undefined,
@@ -135,6 +217,7 @@ export class SessionsService {
     return this.prisma.workSession.update({
       where: { id },
       data: {
+        name: dto.name ?? undefined,
         plannedFor: dto.plannedFor ? new Date(dto.plannedFor) : undefined,
         notes: dto.notes ?? undefined,
         commits: dto.commits ?? undefined,

@@ -64,10 +64,46 @@ export function useCreatePlanned() {
   return useMutation({
     mutationFn: (data: {
       projectId: string;
+      name?: string;
       plannedFor: string;
       notes?: string;
       taskIds?: string[];
     }) => api.post<WorkSession>('/sessions/planned', data),
+    onSuccess: invalidate,
+  });
+}
+
+// Pausar / retomar a sessão aberta (atualiza o badge na hora)
+export function usePauseSession() {
+  const invalidate = useInvalidateSessions();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<WorkSession>(`/sessions/${id}/pause`),
+    onSuccess: (s) => {
+      queryClient.setQueryData(['sessions', 'active'], s);
+      invalidate();
+    },
+  });
+}
+
+export function useResumeSession() {
+  const invalidate = useInvalidateSessions();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<WorkSession>(`/sessions/${id}/resume`),
+    onSuccess: (s) => {
+      queryClient.setQueryData(['sessions', 'active'], s);
+      invalidate();
+    },
+  });
+}
+
+// Marca um plano/sprint como concluído (sai da lista de planejadas)
+export function useCompletePlan() {
+  const invalidate = useInvalidateSessions();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<WorkSession>(`/sessions/${id}/complete-plan`),
     onSuccess: invalidate,
   });
 }
@@ -117,6 +153,7 @@ export function useUpdateSession() {
       ...data
     }: {
       id: string;
+      name?: string;
       plannedFor?: string;
       notes?: string;
       commits?: string;

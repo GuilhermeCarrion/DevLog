@@ -121,17 +121,22 @@ export function sessionInRange(
   return true;
 }
 
-// Soma das horas das sessões concluídas (startedAt→endedAt), em horas decimais.
-// Opcionalmente restringe a um intervalo de datas (filtro de período).
+// Soma das horas trabalhadas (tempo ativo, excluindo pausas) das sessões
+// concluídas, em horas decimais. Opcionalmente restringe a um intervalo (por
+// data de início da sessão).
 export function sessionsToHours(
-  sessions: { startedAt: string | null; endedAt: string | null }[],
+  sessions: {
+    startedAt: string | null;
+    endedAt: string | null;
+    accumulatedSeconds?: number;
+  }[],
   range?: DateRange,
 ): number {
-  let ms = 0;
+  let secs = 0;
   for (const s of sessions) {
     if (s.startedAt && s.endedAt && sessionInRange(s, range)) {
-      ms += new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime();
+      secs += s.accumulatedSeconds ?? 0;
     }
   }
-  return ms / (1000 * 60 * 60);
+  return secs / 3600;
 }

@@ -32,7 +32,7 @@ import {
   useUpdateAgendaItem,
 } from '@/hooks/use-agenda';
 import { useProjects } from '@/hooks/use-projects';
-import { formatDateTime, formatDuration } from '@/lib/format';
+import { formatDateTime, formatSeconds } from '@/lib/format';
 import type { AgendaItem, AgendaItemType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -321,7 +321,7 @@ export default function AgendaPage() {
                 Sessão — {s.project.name}
                 {s.endedAt && (
                   <span className="ml-auto font-mono text-xs text-primary/80">
-                    {formatDuration(s.startedAt!, s.endedAt)}
+                    {formatSeconds(s.accumulatedSeconds)}
                   </span>
                 )}
               </div>

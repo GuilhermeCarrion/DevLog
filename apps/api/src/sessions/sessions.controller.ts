@@ -56,6 +56,21 @@ export class SessionsController {
     return this.sessionsService.start(user.id, id);
   }
 
+  @Post(':id/pause')
+  pause(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.sessionsService.pause(user.id, id);
+  }
+
+  @Post(':id/resume')
+  resume(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.sessionsService.resume(user.id, id);
+  }
+
+  @Post(':id/complete-plan')
+  completePlan(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.sessionsService.completePlan(user.id, id);
+  }
+
   @Post(':id/capture')
   capture(
     @CurrentUser() user: AuthUser,

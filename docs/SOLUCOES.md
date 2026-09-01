@@ -381,6 +381,24 @@
 
 ---
 
+## Sessões — seleção de tasks, pausa e planos/sprints (31/08/2026)
+
+**Task 1 — seleção de tasks com filtro** ([task-select-list.tsx](../apps/web/src/components/tasks/task-select-list.tsx)): componente reutilizável de checkboxes com **busca por texto** e **concluídas escondidas por padrão** (toggle "Concluídas"; as já selecionadas seguem visíveis pra poder desmarcar) + dot da cor do grupo. Substituiu as listas que mostravam TODAS as tasks no **encerrar sessão** e no **planejar sessão**.
+
+**Task 2 — pausar/continuar + plano reutilizável** (migration `20260831120000_sessao_pausa_e_sprint`, campos novos em `WorkSession`):
+- *Pausa com desconto:* `accumulatedSeconds` (tempo ativo) + `runningSince` (início do segmento; null = pausada). Endpoints `POST /sessions/:id/pause` e `/resume`; `finish` fecha o segmento no acumulado. A **duração trabalhada passou a ser `accumulatedSeconds`** (exclui pausas) — atualizado em `sessionsToHours` ([calc.ts](../apps/web/src/lib/calc.ts)), no resumo ([summary.service.ts](../apps/api/src/summary/summary.service.ts)) e na agenda. **Backfill** na migration preserva a duração das sessões antigas (net = bruto) e mantém a ativa rodando. Status derivado ganhou `pausada`.
+- *Plano/sprint como template:* sessão planejada (`startedAt` null) vira um **template reutilizável** com `name`. `POST /sessions/:id/start` deixou de consumi-la — agora **cria uma nova sessão trabalhada** (`parentId` = plano) herdando as **tasks + nota inicial**. O plano continua na lista até `POST /:id/complete-plan` (`plannedDoneAt`, sai das planejadas). `planned()` filtra `plannedDoneAt: null`.
+- *Relação (mesma sprint):* auto-relação `parent`/`children` em `WorkSession`. No card, badge **"parte de: <plano>"**; na tela Sessões o **histórico é agrupado por sprint** ([sessoes/page.tsx](<../apps/web/src/app/(app)/sessoes/page.tsx>)). O badge do timer ([active-session-badge.tsx](../apps/web/src/components/sessions/active-session-badge.tsx)) ganhou **Pausar/Retomar** e estado "(pausada)".
+
+*Regra mantida:* uma sessão aberta por vez — pausada ainda conta como aberta (`active()` inclui pausada), então não dá pra abrir outra sem retomar/encerrar. *Validado:* tsc/lint/e2e (4/4) limpos, rotas 401 sem auth, telas compilam.
+
+**Ajustes de sessão (31/08, mesmo dia):**
+- *Concluir plano no encerrar* ([finish-session-dialog.tsx](../apps/web/src/components/sessions/finish-session-dialog.tsx)): quando a sessão veio de um plano (`parent`), o modal de encerrar mostra um checkbox "Concluir o plano" — encerra a sessão e chama `complete-plan` no mesmo fluxo.
+- *Filtro de sessões* ([sessoes/page.tsx](<../apps/web/src/app/(app)/sessoes/page.tsx>)): barra básica (Projeto + Status, à la Tasks) filtrando a lista antes de dividir em planos/histórico; mensagem de vazio ciente do filtro.
+- *Filtro escondido por sprint:* clicar no card de um plano (corpo do card; botões usam `stopPropagation`) foca só as sessões daquele sprint no lugar do histórico completo (toggle; botão "Ver histórico completo" volta). `SessionCard` ganhou `selected`/`onSelect`.
+
+---
+
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)
 
 **Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`

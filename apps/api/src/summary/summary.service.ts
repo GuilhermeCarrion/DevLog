@@ -17,7 +17,7 @@ export class SummaryService {
         name: true,
         archived: true,
         tasks: { select: { progress: true, status: true } },
-        sessions: { select: { startedAt: true, endedAt: true } },
+        sessions: { select: { startedAt: true, accumulatedSeconds: true } },
         costPeriods: { select: { amount: true, hours: true } },
       },
     });
@@ -34,14 +34,15 @@ export class SummaryService {
                 consideradas.length,
             )
           : 0;
-      const hours = sumSessionHours(p.sessions);
+      const worked = p.sessions.filter((s) => s.startedAt !== null);
+      const hours = worked.reduce((a, s) => a + s.accumulatedSeconds, 0) / 3600;
       const billed = p.costPeriods.reduce((a, c) => a + c.amount, 0);
       return {
         id: p.id,
         name: p.name,
         archived: p.archived,
         tasks: p.tasks.length,
-        sessions: p.sessions.length,
+        sessions: worked.length,
         periods: p.costPeriods.length,
         hours: round1(hours),
         billed: round2(billed),
@@ -72,18 +73,6 @@ export class SummaryService {
       perProject,
     };
   }
-}
-
-function sumSessionHours(
-  sessions: { startedAt: Date | null; endedAt: Date | null }[],
-): number {
-  let ms = 0;
-  for (const s of sessions) {
-    if (s.startedAt && s.endedAt) {
-      ms += s.endedAt.getTime() - s.startedAt.getTime();
-    }
-  }
-  return ms / 3_600_000;
 }
 
 function round1(n: number): number {

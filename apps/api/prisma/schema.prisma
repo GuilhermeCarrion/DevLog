@@ -204,20 +204,39 @@ model Task {
 }
 
 // Status derivado (não persistido):
-//   startedAt == null                    → Planejada
-//   startedAt != null && endedAt == null → Ativa
+//   startedAt == null && plannedDoneAt == null → Plano/sprint (aparece em planejadas)
+//   startedAt == null && plannedDoneAt != null → Plano concluído (fora das planejadas)
+//   startedAt != null && endedAt == null && runningSince != null → Ativa (rodando)
+//   startedAt != null && endedAt == null && runningSince == null → Pausada
 //   startedAt != null && endedAt != null → Concluída
+//
+// Duração trabalhada = accumulatedSeconds (tempo ativo; exclui pausas).
 model WorkSession {
   id         String    @id @default(cuid())
   projectId  String
   project    Project   @relation(fields: [projectId], references: [id])
+  name       String? // nome do plano/sprint (nos templates)
   plannedFor DateTime? // preenchido quando planejada com antecedência
   startedAt  DateTime?
   endedAt    DateTime?
-  notes      String? // markdown livre
-  commits    String? // texto livre: uma linha por commit
-  nextStep   String?
-  tasks      Task[]    @relation("SessionTasks")
+
+  // Pausa: tempo ativo acumulado (s) + início do segmento em andamento
+  // (runningSince == null enquanto pausada; a duração nunca conta a pausa)
+  accumulatedSeconds Int       @default(0)
+  runningSince       DateTime?
+
+  // Template/sprint: ao marcar concluído, o plano sai da lista de planejadas
+  plannedDoneAt DateTime?
+
+  // Vínculo de sprint: sessão trabalhada iniciada a partir de um plano
+  parentId String?
+  parent   WorkSession?  @relation("SessionChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children WorkSession[] @relation("SessionChildren")
+
+  notes    String? // markdown livre
+  commits  String? // texto livre: uma linha por commit
+  nextStep String?
+  tasks    Task[]  @relation("SessionTasks")
 }
 
 model Note {

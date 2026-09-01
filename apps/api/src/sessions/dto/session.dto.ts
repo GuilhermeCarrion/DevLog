@@ -1,9 +1,14 @@
 import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
 
-// Sessão planejada: criada no planejamento semanal, começa sem startedAt
+// Plano/sprint (template): criado no planejamento, começa sem startedAt e pode
+// ser iniciado N vezes.
 export class CreatePlannedSessionDto {
   @IsString()
   projectId: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string; // nome do plano/sprint
 
   @IsDateString()
   plannedFor: string;
@@ -55,8 +60,12 @@ export class FinishSessionDto {
   taskIds?: string[];
 }
 
-// Edição de sessão já encerrada (ou planejada)
+// Edição de sessão já encerrada (ou plano)
 export class UpdateSessionDto extends FinishSessionDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
   @IsOptional()
   @IsDateString()
   plannedFor?: string;

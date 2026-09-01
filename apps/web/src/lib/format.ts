@@ -9,12 +9,9 @@ export function formatDateTime(iso: string) {
   return format(new Date(iso), "dd/MM 'às' HH:mm", { locale: ptBR });
 }
 
-// Tempo decorrido de sessão ativa: "1h 23m" / "45m" / "12s"
-export function formatElapsed(fromIso: string, now: Date = new Date()) {
-  const seconds = Math.max(
-    0,
-    Math.floor((now.getTime() - new Date(fromIso).getTime()) / 1000),
-  );
+// Formata uma quantidade de segundos: "1h 23m" / "45m" / "12s"
+export function formatSeconds(totalSeconds: number) {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`;
@@ -22,7 +19,7 @@ export function formatElapsed(fromIso: string, now: Date = new Date()) {
   return `${seconds}s`;
 }
 
-// Duração de sessão encerrada
-export function formatDuration(startIso: string, endIso: string) {
-  return formatElapsed(startIso, new Date(endIso));
+// Tempo decorrido de sessão ativa: "1h 23m" / "45m" / "12s"
+export function formatElapsed(fromIso: string, now: Date = new Date()) {
+  return formatSeconds((now.getTime() - new Date(fromIso).getTime()) / 1000);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Square, Timer } from 'lucide-react';
+import { Pause, Play, Square, Timer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FinishSessionDialog } from '@/components/sessions/finish-session-dialog';
@@ -11,29 +11,40 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { useActiveSession, useCapture } from '@/hooks/use-sessions';
-import { formatElapsed } from '@/lib/format';
+import {
+  useActiveSession,
+  useCapture,
+  usePauseSession,
+  useResumeSession,
+} from '@/hooks/use-sessions';
+import { formatSeconds } from '@/lib/format';
+import { sessionElapsedSeconds } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 // Badge fixo do timer: aparece em qualquer tela enquanto há sessão ativa.
 // Clicar abre a captura rápida (texto vai CONCATENANDO em notes/commits).
 export function ActiveSessionBadge() {
   const { data: active } = useActiveSession();
   const capture = useCapture();
+  const pause = usePauseSession();
+  const resume = useResumeSession();
   const [notes, setNotes] = useState('');
   const [commits, setCommits] = useState('');
   const [finishOpen, setFinishOpen] = useState(false);
 
-  // `now` em estado (não só um tick): o React Compiler memoiza formatElapsed pela
-  // dependência que ENXERGA (startedAt, estável) e ignoraria new Date() interno.
-  // Passando `now` como dependência explícita, o valor recalcula a cada segundo.
+  // O cronômetro só corre enquanto há segmento em andamento (runningSince).
+  // Pausada = tempo congelado (não precisa de tick).
+  const running = Boolean(active?.runningSince);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (!active?.startedAt) return;
+    if (!running) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [active?.startedAt]);
+  }, [running]);
 
   if (!active?.startedAt) return null;
+
+  const elapsed = formatSeconds(sessionElapsedSeconds(active, now));
 
   function handleCapture() {
     if (!notes.trim() && !commits.trim()) return;
@@ -59,12 +70,18 @@ export function ActiveSessionBadge() {
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 cursor-pointer">
-              <Timer className="size-4 animate-pulse" />
-              <span className="font-mono">
-                {formatElapsed(active.startedAt, new Date(now))}
-              </span>
-              <span className="max-w-32 truncate text-xs text-primary/80">
+            <button
+              className={cn(
+                'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer',
+                running
+                  ? 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/20'
+                  : 'border-border bg-secondary text-muted-foreground hover:bg-accent',
+              )}
+            >
+              <Timer className={cn('size-4', running && 'animate-pulse')} />
+              <span className="font-mono">{elapsed}</span>
+              {!running && <span className="text-xs">(pausada)</span>}
+              <span className="max-w-32 truncate text-xs opacity-80">
                 {active.project.name}
               </span>
             </button>
@@ -95,6 +112,29 @@ export function ActiveSessionBadge() {
             </div>
           </PopoverContent>
         </Popover>
+
+        {running ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => pause.mutate(active.id, { onError: (e) => toast.error(e.message) })}
+            disabled={pause.isPending}
+            title="Pausar (para o cronômetro, continua a mesma sessão)"
+          >
+            <Pause className="size-3" />
+            Pausar
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            onClick={() => resume.mutate(active.id, { onError: (e) => toast.error(e.message) })}
+            disabled={resume.isPending}
+            title="Retomar a sessão"
+          >
+            <Play className="size-3" />
+            Retomar
+          </Button>
+        )}
 
         <Button
           variant="destructive"

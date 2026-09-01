@@ -133,7 +133,14 @@ export function NewSessionButton() {
                 className="flex flex-col items-start gap-1 rounded-md border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent cursor-pointer"
               >
                 <div className="flex w-full items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{s.project.name}</span>
+                  <span className="text-sm font-medium">
+                    {s.name || s.project.name}
+                    {s.name && (
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                        {s.project.name}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     {s.plannedFor ? formatDateTime(s.plannedFor) : ''}
                   </span>

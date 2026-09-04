@@ -1,5 +1,7 @@
 # DevLog
 
+[![CI](https://github.com/GuilhermeCarrion/DevLog/actions/workflows/ci.yml/badge.svg)](https://github.com/GuilhermeCarrion/DevLog/actions/workflows/ci.yml)
+
 Sistema pessoal para registrar planejamentos, tasks, sessões de trabalho, notas e agenda por projeto — e gerar o relatório semanal da faculdade (fase 2).
 
 **Stack:** NestJS + Prisma + PostgreSQL · Next.js + Tailwind v4 · JWT em cookie httpOnly
@@ -30,6 +32,16 @@ npm run dev:web   # http://localhost:3000
 Acesse http://localhost:3000, crie sua conta e comece.
 
 O `.env` da API fica em `apps/api/.env` (veja `apps/api/.env.example`).
+
+## Testes e CI
+
+```bash
+npm test --workspace web     # unitários do front (Vitest) — cálculo, formatação, status de sessão
+npm test --workspace api     # unitários da API (Jest) — agregação do resumo (Prisma mockado)
+npm run test:e2e --workspace api   # e2e da API (sobe o app; exige Postgres — use npm run db:up)
+```
+
+O pipeline de CI ([.github/workflows/ci.yml](./.github/workflows/ci.yml)) roda a cada push/PR: instala dependências, executa os testes (unitários + e2e com um Postgres de serviço) e faz o build da API e do web. O status aparece no badge acima.
 
 ## Estrutura
 

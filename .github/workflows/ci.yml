@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    name: Testes e build
+    runs-on: ubuntu-latest
+
+    # Postgres para os testes e2e da API (sobem o app real e conectam no banco)
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: devlog
+          POSTGRES_PASSWORD: devlog
+          POSTGRES_DB: devlog
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U devlog"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://devlog:devlog@localhost:5432/devlog
+      DIRECT_URL: postgresql://devlog:devlog@localhost:5432/devlog
+      JWT_SECRET: ci-secret-nao-usar-em-producao
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ---- instalação de dependências ----
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npm run prisma:generate --workspace api
+
+      # ---- execução de testes ----
+      - name: Testes unitários (API)
+        run: npm test --workspace api
+
+      - name: Testes unitários (Web)
+        run: npm test --workspace web
+
+      - name: Aplicar migrations (banco de teste)
+        working-directory: apps/api
+        run: npx prisma migrate deploy
+
+      - name: Testes e2e (API)
+        run: npm run test:e2e --workspace api
+
+      # ---- build ----
+      - name: Build da API
+        run: npm run build --workspace api
+
+      - name: Build do Web
+        run: npm run build --workspace web

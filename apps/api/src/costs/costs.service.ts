@@ -163,6 +163,7 @@ export class CostsService {
       include: {
         category: true,
         items: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
+        walletTransaction: { select: { id: true } }, // já lançado na Carteira?
       },
     });
   }

@@ -78,6 +78,7 @@ export interface CostPeriod {
   note: string | null;
   createdAt: string;
   items: CostItem[]; // custos arquivados neste lançamento
+  walletTransaction?: { id: string } | null; // já lançado na Carteira?
 }
 
 // Metadados fixos do cabeçalho do relatório (o que não vem de tasks/sessões)
@@ -259,4 +260,74 @@ export interface AgendaMonth {
   items: AgendaItem[];
   plannedSessions: WorkSession[];
   sessions: WorkSession[]; // executadas (startedAt no mês) — visão do que foi feito
+}
+
+// ============ Carteira (finanças pessoais) ============
+
+export type TxType = 'INCOME' | 'EXPENSE';
+export type TxOrigin = 'MANUAL' | 'RECURRING' | 'INSTALLMENT' | 'PROJECT';
+export type RecurrenceInterval = 'MONTHLY' | 'WEEKLY' | 'YEARLY';
+
+export interface WalletCategory {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  type: TxType;
+  amount: number;
+  date: string;
+  paid: boolean;
+  paidAt: string | null;
+  description: string;
+  categoryId: string | null;
+  category: WalletCategory | null;
+  origin: TxOrigin;
+  projectId: string | null;
+  installmentPlanId: string | null;
+  installmentNumber: number | null;
+  recurringRuleId: string | null;
+}
+
+export interface RecurringRule {
+  id: string;
+  type: TxType;
+  amount: number;
+  description: string;
+  categoryId: string | null;
+  category: WalletCategory | null;
+  interval: RecurrenceInterval;
+  dayOfMonth: number | null;
+  startDate: string;
+  endDate: string | null;
+  active: boolean;
+}
+
+export interface InstallmentPlan {
+  id: string;
+  type: TxType;
+  description: string;
+  categoryId: string | null;
+  category: WalletCategory | null;
+  totalAmount: number;
+  installmentsCount: number;
+  firstDueDate: string;
+  createdAt: string;
+  transactions: { id: string; paid: boolean; amount: number; date: string }[];
+}
+
+export interface WalletSummary {
+  month: string;
+  totalBalance: number; // saldo total guardado (all-time, só pagos)
+  income: number;
+  expense: number;
+  incomePaid: number;
+  expensePaid: number;
+  saldoPrevisto: number;
+  saldoRealizado: number;
+  pending: { count: number; income: number; expense: number };
+  expenseByCategory: { name: string; color: string; total: number }[];
+  count: number;
 }

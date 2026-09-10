@@ -1,9 +1,10 @@
 'use client';
 
-import { Archive, Plus, RotateCcw, Settings2, Trash2, X } from 'lucide-react';
+import { Archive, Plus, RotateCcw, Settings2, Trash2, Wallet, X } from 'lucide-react';
 import { type FormEvent, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NumberInput } from '@/components/ui/number-input';
@@ -16,6 +17,7 @@ import {
   usePeriods,
   useReopenPeriod,
 } from '@/hooks/use-costs';
+import { useLaunchCostPeriod } from '@/hooks/use-wallet';
 import { type DateRange, formatBRL } from '@/lib/calc';
 import type { CostPeriod, PeriodCategory, Project } from '@/lib/types';
 import { PeriodCategoryDialog } from './period-category-dialog';
@@ -52,6 +54,8 @@ export function PeriodsSection({
   const createPeriod = useCreatePeriod(project.id);
   const reopenPeriod = useReopenPeriod(project.id);
   const deletePeriod = useDeletePeriod(project.id);
+  const launch = useLaunchCostPeriod();
+  const confirm = useConfirm();
 
   // ---- diálogos auxiliares ----
   const [catDialog, setCatDialog] = useState<{
@@ -117,14 +121,13 @@ export function PeriodsSection({
     );
   }
 
-  function reopen(p: CostPeriod) {
-    if (
-      !confirm(
-        `Reabrir "${p.label || p.category?.name || 'lançamento'}"? Os ${p.items.length} custo(s) voltam para a lista ativa e este item sai do histórico.`,
-      )
-    ) {
-      return;
-    }
+  async function reopen(p: CostPeriod) {
+    const ok = await confirm({
+      title: 'Reabrir lançamento',
+      description: `Reabrir "${p.label || p.category?.name || 'lançamento'}"? Os ${p.items.length} custo(s) voltam para a lista ativa e este item sai do histórico.`,
+      confirmLabel: 'Reabrir',
+    });
+    if (!ok) return;
     reopenPeriod.mutate(p.id, {
       onSuccess: () => {
         setDetailsOf(null);
@@ -346,6 +349,29 @@ export function PeriodsSection({
                 <span className="shrink-0 font-mono text-sm text-primary">
                   {formatBRL(p.amount)}
                 </span>
+                {p.walletTransaction ? (
+                  <span
+                    title="Já lançado na Carteira"
+                    className="shrink-0 rounded p-1 text-primary"
+                  >
+                    <Wallet className="size-3.5" />
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    title="Lançar como ganho na Carteira"
+                    disabled={launch.isPending}
+                    onClick={() =>
+                      launch.mutate(p.id, {
+                        onSuccess: () => toast.success('Lançado na Carteira!'),
+                        onError: (e) => toast.error(e.message),
+                      })
+                    }
+                    className="shrink-0 rounded p-1 text-muted-foreground/60 hover:bg-accent hover:text-primary cursor-pointer"
+                  >
+                    <Wallet className="size-3.5" />
+                  </button>
+                )}
                 <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     type="button"
@@ -358,14 +384,15 @@ export function PeriodsSection({
                   <button
                     type="button"
                     title="Excluir"
-                    onClick={() => {
-                      if (
-                        !confirm(
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Excluir lançamento',
+                        description:
                           'Excluir este lançamento e os custos guardados nele?',
-                        )
-                      ) {
-                        return;
-                      }
+                        confirmLabel: 'Excluir',
+                        destructive: true,
+                      });
+                      if (!ok) return;
                       deletePeriod.mutate(p.id, {
                         onError: (e) => toast.error(e.message),
                       });

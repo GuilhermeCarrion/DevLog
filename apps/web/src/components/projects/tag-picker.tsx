@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ColorPicker, TAG_COLORS } from '@/components/ui/color-picker';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { useCreateTag, useDeleteTag, useTags } from '@/hooks/use-tags';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ export function TagPicker({
   const { data: tags } = useTags();
   const createTag = useCreateTag();
   const deleteTag = useDeleteTag();
+  const confirm = useConfirm();
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
@@ -77,9 +79,15 @@ export function TagPicker({
               <span
                 role="button"
                 title="Excluir tag"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  if (confirm(`Excluir a tag "${tag.name}" de vez?`)) {
+                  const ok = await confirm({
+                    title: 'Excluir tag',
+                    description: `Excluir a tag "${tag.name}" de vez?`,
+                    confirmLabel: 'Excluir',
+                    destructive: true,
+                  });
+                  if (ok) {
                     onChange(value.filter((t) => t !== tag.id));
                     deleteTag.mutate(tag.id);
                   }

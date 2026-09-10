@@ -9,6 +9,7 @@ import {
   NotebookPen,
   Settings,
   Timer,
+  Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -21,6 +22,7 @@ const NAV = [
   { href: '/sessoes', label: 'Sessões', icon: Timer },
   { href: '/notas', label: 'Notas', icon: NotebookPen },
   { href: '/calculadora', label: 'Calculadora', icon: Calculator },
+  { href: '/carteira', label: 'Carteira', icon: Wallet },
   { href: '/relatorio', label: 'Relatório', icon: FileText },
   { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ];

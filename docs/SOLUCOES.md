@@ -399,6 +399,24 @@
 
 ---
 
+## Carteira — finanças pessoais + integração com a Calculadora (10/09/2026)
+
+Módulo pessoal (escopo por `userId`) de ganhos/gastos, com recorrentes, parcelas e integração manual com os recebimentos dos projetos. Plano: [PLANO-CARTEIRA.md](./PLANO-CARTEIRA.md).
+
+*Modelo* (migration `20260910120000_carteira`): enums `TxType`/`TxOrigin`/`RecurrenceInterval`; `WalletCategory` (cor, reutilizável); `WalletTransaction` (unidade central — type/amount/date/paid, `origin`, e vínculos `projectId`/`costPeriodId @unique`/`recurringRuleId`/`installmentPlanId`); `RecurringRule` e `InstallmentPlan`. Uma carteira só (sem contas).
+
+*Materialização* ([wallet.service.ts](../apps/api/src/wallet/wallet.service.ts)): parcelas geram as **N transações na criação** (divisão com ajuste de centavos na última); recorrentes são materializadas **sob demanda por mês** (`ensureRecurringForMonth`, idempotente por `recurringRuleId`+dia) ao listar/resumir — sem cron. Excluir recorrência tem opção "manter as já lançadas" (FK `onDelete: SetNull`); excluir parcelamento cascateia as parcelas.
+
+*Resumo* (`GET /wallet/summary?month=YYYY-MM`): entradas/saídas, **saldo realizado × previsto** (pago vs incluindo pendentes), pendentes e **gastos por categoria** (para o gráfico de barras).
+
+*Integração manual* (`POST /wallet/from-cost-period/:id`): botão na aba Calculadora lança um período "Pago" como ganho `INCOME` vinculado (`costPeriodId @unique` bloqueia duplicar; o histórico de períodos passou a incluir `walletTransaction` para mostrar "já lançado"). Ao lançar, invalida `['wallet']` e `['periods']`.
+
+*Front* ([carteira/page.tsx](<../apps/web/src/app/(app)/carteira/page.tsx>)): seletor de mês, cards de resumo, barras de gasto por categoria e abas **Lançamentos / Recorrentes / Parcelas / Categorias**; diálogos em [components/wallet/](../apps/web/src/components/wallet). Entrada lima, saída rosa. Sidebar ganhou "Carteira".
+
+*Testes:* [wallet.service.spec.ts](../apps/api/src/wallet/wallet.service.spec.ts) cobre a divisão de parcelas (Prisma mockado) e a agregação do resumo. *Validado:* tsc/lint/testes (API 5/5, web 32/32) limpos, 18 rotas mapeadas + 401 sem auth, `/carteira` compila.
+
+---
+
 ## Deploy — cookie cross-site + guard client-side (30/07/2026)
 
 **Local:** `apps/api/src/main.ts`, `apps/api/src/auth/auth.controller.ts`, `apps/web/src/components/auth/auth-gate.tsx`, `apps/api/Dockerfile`, `apps/api/prisma/schema.prisma`, `docs/DEPLOY.md`

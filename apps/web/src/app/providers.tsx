@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Toaster } from 'sonner';
+import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // useState garante um QueryClient por montagem (não recriado a cada render)
@@ -17,7 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <ConfirmProvider>{children}</ConfirmProvider>
       <Toaster
         theme="dark"
         position="bottom-right"

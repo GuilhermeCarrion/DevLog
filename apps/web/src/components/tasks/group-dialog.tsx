@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,6 +38,7 @@ export function GroupDialog({
   const createGroup = useCreateGroup(projectId);
   const updateGroup = useUpdateGroup(projectId);
   const deleteGroup = useDeleteGroup(projectId);
+  const confirm = useConfirm();
 
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(NO_COLOR);
@@ -65,11 +67,15 @@ export function GroupDialog({
     else createGroup.mutate(data, options);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!group) return;
-    if (!confirm(`Excluir o grupo "${group.name}"? As tasks ficam sem grupo.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Excluir grupo',
+      description: `Excluir o grupo "${group.name}"? As tasks ficam sem grupo.`,
+      confirmLabel: 'Excluir',
+      destructive: true,
+    });
+    if (!ok) return;
     deleteGroup.mutate(group.id, {
       onSuccess: () => {
         onOpenChange(false);

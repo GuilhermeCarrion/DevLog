@@ -1,6 +1,6 @@
 # Plano — Módulo "Minha Carteira" (finanças pessoais)
 
-> Documento de planejamento. Ainda **não implementado**. Escopo definido com o usuário em 31/08/2026.
+> Documento de planejamento. **Implementado em 10/09/2026** (ver `docs/SOLUCOES.md` → "Carteira"). Escopo definido com o usuário em 31/08/2026.
 
 ## 1. Objetivo
 

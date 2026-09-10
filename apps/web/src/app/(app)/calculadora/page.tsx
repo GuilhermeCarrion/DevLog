@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { CostDialog, type CostDraft } from '@/components/calc/cost-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Label } from '@/components/ui/label';
 import { NumberInput } from '@/components/ui/number-input';
 import {
@@ -26,6 +27,7 @@ export default function CalculadoraPage() {
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
+  const confirm = useConfirm();
 
   const [rate, setRate] = useState('');
   const [margin, setMargin] = useState('');
@@ -172,8 +174,14 @@ export default function CalculadoraPage() {
         }}
         onDelete={
           editing
-            ? () => {
-                if (!confirm(`Excluir o custo padrão "${editing.name}"?`)) return;
+            ? async () => {
+                const ok = await confirm({
+                  title: 'Excluir custo padrão',
+                  description: `Excluir o custo padrão "${editing.name}"?`,
+                  confirmLabel: 'Excluir',
+                  destructive: true,
+                });
+                if (!ok) return;
                 deleteTemplate.mutate(editing.id, {
                   onSuccess: () => {
                     setDialogOpen(false);

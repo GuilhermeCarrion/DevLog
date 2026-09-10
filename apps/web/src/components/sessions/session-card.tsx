@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,6 +51,7 @@ export function SessionCard({
   const completePlan = useCompletePlan();
   const deleteSession = useDeleteSession();
   const updateSession = useUpdateSession();
+  const confirm = useConfirm();
 
   const [editOpen, setEditOpen] = useState(false);
   const [name, setName] = useState('');
@@ -134,8 +136,13 @@ export function SessionCard({
                 size="sm"
                 variant="ghost"
                 title="Marcar plano como concluído (sai das planejadas)"
-                onClick={() => {
-                  if (!confirm('Marcar este plano como concluído? Ele sai da lista de planejadas.')) return;
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Concluir plano',
+                    description: 'Marcar este plano como concluído? Ele sai da lista de planejadas.',
+                    confirmLabel: 'Concluir',
+                  });
+                  if (!ok) return;
                   completePlan.mutate(session.id, {
                     onSuccess: () => toast.success('Plano concluído!'),
                     onError: (e) => toast.error(e.message),
@@ -162,8 +169,14 @@ export function SessionCard({
                 variant="ghost"
                 title="Excluir"
                 className="text-muted-foreground hover:text-destructive"
-                onClick={() => {
-                  if (confirm('Excluir esta sessão?')) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Excluir sessão',
+                    description: 'Excluir esta sessão?',
+                    confirmLabel: 'Excluir',
+                    destructive: true,
+                  });
+                  if (ok) {
                     deleteSession.mutate(session.id, {
                       onError: (e) => toast.error(e.message),
                     });

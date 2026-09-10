@@ -23,12 +23,16 @@ model User {
   defaultHourlyRate Float @default(0) // valor/hora pré-preenchido em itens Dev
   defaultMargin     Float @default(30) // margem % sugerida
 
-  projects         Project[]
-  notes            Note[]
-  agendaItems      AgendaItem[]
-  tags             Tag[]
-  costTemplates    CostTemplate[]
-  periodCategories PeriodCategory[]
+  projects           Project[]
+  notes              Note[]
+  agendaItems        AgendaItem[]
+  tags               Tag[]
+  costTemplates      CostTemplate[]
+  periodCategories   PeriodCategory[]
+  walletCategories   WalletCategory[]
+  walletTransactions WalletTransaction[]
+  recurringRules     RecurringRule[]
+  installmentPlans   InstallmentPlan[]
 }
 
 // ============ Núcleo ============
@@ -55,6 +59,7 @@ model Project {
   costItems     CostItem[]
   costPeriods   CostPeriod[]
   reportProfile ReportProfile?
+  walletTransactions WalletTransaction[]
 }
 
 // ============ Calculadora de preço ============
@@ -132,7 +137,8 @@ model CostPeriod {
   note       String? // detalhes livres do lançamento
   createdAt  DateTime        @default(now())
 
-  items CostItem[] // custos arquivados neste lançamento (limpos da lista ativa)
+  items             CostItem[] // custos arquivados neste lançamento (limpos da lista ativa)
+  walletTransaction WalletTransaction? // ganho lançado na Carteira a partir deste período
 }
 
 // Tag reutilizável, criada pelo usuário e aplicada a vários projetos (M2M).
@@ -305,4 +311,107 @@ model ReportItem {
   status        String // "Concluída" | "Em andamento" | "Em espera"
   percent       Int?
   justification String
+}
+
+// ============ Carteira (finanças pessoais) ============
+
+enum TxType {
+  INCOME
+  EXPENSE
+}
+
+enum TxOrigin {
+  MANUAL // lançamento avulso
+  RECURRING // gerado por uma regra recorrente
+  INSTALLMENT // parcela de uma compra
+  PROJECT // importado de um período "Pago" da Calculadora
+}
+
+enum RecurrenceInterval {
+  MONTHLY
+  WEEKLY
+  YEARLY
+}
+
+// Categoria com cor, reutilizável (mesmo padrão de Tag/PeriodCategory)
+model WalletCategory {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  name   String
+  color  String
+
+  transactions   WalletTransaction[]
+  recurringRules RecurringRule[]
+  installments   InstallmentPlan[]
+
+  @@unique([userId, name])
+}
+
+// Lançamento — unidade central da carteira
+model WalletTransaction {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  type        TxType
+  amount      Float
+  date        DateTime // competência / vencimento
+  paid        Boolean         @default(false)
+  paidAt      DateTime?
+  description String
+  categoryId  String?
+  category    WalletCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  origin      TxOrigin        @default(MANUAL)
+
+  // Vínculos de origem
+  projectId    String?
+  project      Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  costPeriodId String?     @unique // integração: 1 período gera no máx. 1 ganho
+  costPeriod   CostPeriod? @relation(fields: [costPeriodId], references: [id], onDelete: SetNull)
+
+  recurringRuleId String?
+  recurringRule   RecurringRule? @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+
+  installmentPlanId String?
+  installmentPlan   InstallmentPlan? @relation(fields: [installmentPlanId], references: [id], onDelete: Cascade)
+  installmentNumber Int? // parcela X de N
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+// Regra de recorrência (assinaturas, aluguel) — materializa transações
+model RecurringRule {
+  id               String              @id @default(cuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id])
+  type             TxType
+  amount           Float
+  description      String
+  categoryId       String?
+  category         WalletCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  interval         RecurrenceInterval  @default(MONTHLY)
+  dayOfMonth       Int? // ex: todo dia 5 (para MONTHLY)
+  startDate        DateTime
+  endDate          DateTime?
+  active           Boolean             @default(true)
+  lastGeneratedFor DateTime? // até quando já materializou
+  transactions     WalletTransaction[]
+}
+
+// Compra parcelada — gera N transações mensais na criação
+model InstallmentPlan {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id])
+  type              TxType              @default(EXPENSE)
+  description       String
+  categoryId        String?
+  category          WalletCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  totalAmount       Float
+  installmentsCount Int
+  firstDueDate      DateTime
+  createdAt         DateTime            @default(now())
+  transactions      WalletTransaction[]
 }

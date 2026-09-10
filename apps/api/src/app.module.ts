@@ -13,6 +13,7 @@ import { SessionsModule } from './sessions/sessions.module';
 import { SummaryModule } from './summary/summary.module';
 import { TagsModule } from './tags/tags.module';
 import { TasksModule } from './tasks/tasks.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { TasksModule } from './tasks/tasks.module';
     CostsModule,
     ReportsModule,
     SummaryModule,
+    WalletModule,
   ],
   controllers: [AppController],
 })

@@ -66,6 +66,7 @@ export function useCreatePlanned() {
       projectId: string;
       name?: string;
       plannedFor: string;
+      dueAt?: string;
       notes?: string;
       taskIds?: string[];
     }) => api.post<WorkSession>('/sessions/planned', data),
@@ -155,6 +156,7 @@ export function useUpdateSession() {
       id: string;
       name?: string;
       plannedFor?: string;
+      dueAt?: string | null;
       notes?: string;
       commits?: string;
       nextStep?: string;

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { TaskSelectList } from '@/components/tasks/task-select-list';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,7 @@ import { NumberInput } from '@/components/ui/number-input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useGenerateReport } from '@/hooks/use-reports';
+import { defaultReportFilename } from '@/lib/report';
 import type {
   ReportCandidates,
   ReportCandidateTask,
@@ -26,7 +28,6 @@ import { cn } from '@/lib/utils';
 import { TaskPreviewDialog } from './task-preview-dialog';
 
 type Section = 'realizadas' | 'proximas';
-type ProximaRow = ReportRow & { included: boolean };
 
 // Cores por status (dot no select) — "mais cores para informação"
 const STATUS_OPTIONS = [
@@ -67,11 +68,17 @@ export function ReportReview({
   const [realizadas, setRealizadas] = useState<ReportRow[]>(
     candidates.realizadas.map((r) => ({ ...r })),
   );
-  const [proximas, setProximas] = useState<ProximaRow[]>(
-    candidates.proximas.map((r) => ({ ...r, included: true })),
+  const [proximas, setProximas] = useState<ReportRow[]>(
+    candidates.proximas.map((r) => ({ ...r })),
   );
   const [semana, setSemana] = useState(initialSemana);
   const [percentTotal, setPercentTotal] = useState(initialPercentTotal);
+  // Nome do arquivo: prefill com o padrão do professor; segue a semana enquanto
+  // o usuário não editar manualmente.
+  const [filename, setFilename] = useState(() =>
+    defaultReportFilename(initialSemana),
+  );
+  const [filenameEdited, setFilenameEdited] = useState(false);
 
   // Linha/campo em foco → destino do "inserir nota" do painel lateral
   const [focused, setFocused] = useState<{ section: Section; index: number } | null>(
@@ -85,21 +92,31 @@ export function ReportReview({
     return m;
   }, [candidates.tasks]);
 
-  const remainingTasks = useMemo(() => {
-    const used = new Set(proximas.map((p) => p.taskId).filter(Boolean));
-    return candidates.tasks.filter((t) => !used.has(t.id));
-  }, [candidates.tasks, proximas]);
-
   // ---- edição de linhas ----
   function updateRealizada(i: number, patch: Partial<ReportRow>) {
     setRealizadas((rows) =>
       rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
     );
   }
-  function updateProxima(i: number, patch: Partial<ProximaRow>) {
+  function updateProxima(i: number, patch: Partial<ReportRow>) {
     setProximas((rows) =>
       rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
     );
+  }
+
+  // ids das tasks já em "Próximas" (para marcar na lista de seleção)
+  const proximasSelectedIds = useMemo(
+    () => proximas.map((p) => p.taskId).filter((id): id is string => !!id),
+    [proximas],
+  );
+
+  // Padrão já usado em Sessões: marcar/desmarcar tasks na lista.
+  function toggleProximaTask(taskId: string) {
+    if (proximasSelectedIds.includes(taskId)) {
+      setProximas((rows) => rows.filter((r) => r.taskId !== taskId));
+    } else {
+      addTaskToProximas(taskId);
+    }
   }
 
   function insertNote(notes: string) {
@@ -139,7 +156,7 @@ export function ReportReview({
     } else {
       setProximas((p) => [
         ...p,
-        { taskId: null, tarefa: '', status: 'Em espera', justificativa: '', included: true },
+        { taskId: null, tarefa: '', status: 'Em espera', justificativa: '' },
       ]);
     }
   }
@@ -154,7 +171,6 @@ export function ReportReview({
         tarefa: t.title,
         status: 'Em espera',
         justificativa: t.description ?? '',
-        included: true,
       },
     ]);
   }
@@ -169,7 +185,7 @@ export function ReportReview({
         justificativa: r.justificativa,
       }));
     const proximasOut: ReportRow[] = proximas
-      .filter((p) => p.included && p.tarefa.trim())
+      .filter((p) => p.tarefa.trim())
       .map((p) => ({
         tarefa: p.tarefa.trim(),
         status: p.status,
@@ -181,6 +197,7 @@ export function ReportReview({
         from,
         to,
         semana: semana.trim() || undefined,
+        filename: filename.trim() || undefined,
         percentTotal: percentTotal === '' ? undefined : Number(percentTotal),
         realizadas: realizadasOut,
         proximas: proximasOut,
@@ -206,8 +223,27 @@ export function ReportReview({
             <Label className="text-xs text-muted-foreground">Semana</Label>
             <Input
               value={semana}
-              onChange={(e) => setSemana(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSemana(v);
+                // Enquanto o usuário não editar o nome, ele acompanha a semana
+                if (!filenameEdited) setFilename(defaultReportFilename(v));
+              }}
               className="w-28"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">
+              Nome do arquivo
+            </Label>
+            <Input
+              value={filename}
+              onChange={(e) => {
+                setFilename(e.target.value);
+                setFilenameEdited(true);
+              }}
+              placeholder="RAP-TDS-2026.013.docx"
+              className="w-52"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -268,15 +304,26 @@ export function ReportReview({
           {/* Próximas */}
           <section className="flex flex-col gap-3">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Próximas tarefas ({proximas.filter((p) => p.included).length})
+              Próximas tarefas ({proximas.length})
             </h3>
+
+            {/* Seleção de tasks (mesmo padrão das Sessões): marcar/desmarcar */}
+            <div className="rounded-xl border border-border bg-card p-3">
+              <p className="mb-2 text-xs text-muted-foreground">
+                Marque as tasks que entram em “Próximas Tarefas”.
+              </p>
+              <TaskSelectList
+                tasks={candidates.tasks}
+                selectedIds={proximasSelectedIds}
+                onToggle={toggleProximaTask}
+              />
+            </div>
+
             {proximas.map((row, i) => (
               <RowCard
                 key={i}
                 row={row}
                 group={row.taskId ? taskById.get(row.taskId)?.group : null}
-                included={row.included}
-                onToggleInclude={() => updateProxima(i, { included: !row.included })}
                 focused={focused?.section === 'proximas' && focused.index === i}
                 onFocusJustificativa={() =>
                   setFocused({ section: 'proximas', index: i })
@@ -290,28 +337,15 @@ export function ReportReview({
                 }
               />
             ))}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="w-56">
-                <Select
-                  value=""
-                  onValueChange={(v) => v && addTaskToProximas(v)}
-                  placeholder="Adicionar task…"
-                  options={[
-                    { value: '', label: 'Adicionar task…' },
-                    ...remainingTasks.map((t) => ({ value: t.id, label: t.title })),
-                  ]}
-                  disabled={remainingTasks.length === 0}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => addManual('proximas')}
-              >
-                <Plus className="size-4" />
-                Linha manual
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => addManual('proximas')}
+            >
+              <Plus className="size-4" />
+              Adicionar linha manual
+            </Button>
           </section>
         </div>
 

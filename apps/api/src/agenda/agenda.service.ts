@@ -29,7 +29,7 @@ export class AgendaService {
       },
     } as const;
 
-    const [items, plannedSessions, sessions] = await Promise.all([
+    const [items, plannedSessions, dueSessions, sessions] = await Promise.all([
       this.prisma.agendaItem.findMany({
         where: { userId, date: { gte: range.start, lt: range.end } },
         include: { project: { select: { id: true, name: true } } },
@@ -45,6 +45,17 @@ export class AgendaService {
         include: sessionInclude,
         orderBy: { plannedFor: 'asc' },
       }),
+      // Prazos: sessões ainda abertas (não concluídas) com dueAt no mês
+      this.prisma.workSession.findMany({
+        where: {
+          project: { userId },
+          endedAt: null,
+          plannedDoneAt: null,
+          dueAt: { gte: range.start, lt: range.end },
+        },
+        include: sessionInclude,
+        orderBy: { dueAt: 'asc' },
+      }),
       // Executadas: iniciadas dentro do mês (para o "heatmap" do que foi feito)
       this.prisma.workSession.findMany({
         where: {
@@ -56,7 +67,7 @@ export class AgendaService {
       }),
     ]);
 
-    return { items, plannedSessions, sessions };
+    return { items, plannedSessions, dueSessions, sessions };
   }
 
   async create(userId: string, dto: CreateAgendaItemDto) {

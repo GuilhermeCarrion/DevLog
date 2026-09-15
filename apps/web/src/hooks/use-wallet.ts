@@ -6,6 +6,8 @@ import type {
   InstallmentPlan,
   RecurrenceInterval,
   RecurringRule,
+  SavingsBox,
+  SavingsEntry,
   TxType,
   WalletCategory,
   WalletSummary,
@@ -217,6 +219,73 @@ export function useDeleteInstallment() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/wallet/installments/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+// ---------- caixinhas (reserva/economias) ----------
+
+export function useSavingsBoxes() {
+  return useQuery({
+    queryKey: ['wallet', 'savings'],
+    queryFn: () => api.get<SavingsBox[]>('/wallet/savings'),
+  });
+}
+
+export function useCreateSavingsBox() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (data: { name: string; color?: string }) =>
+      api.post<SavingsBox>('/wallet/savings', data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateSavingsBox() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; color?: string }) =>
+      api.patch<SavingsBox>(`/wallet/savings/${id}`, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSavingsBox() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/wallet/savings/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+export interface SavingsEntryInput {
+  amount: number;
+  description?: string | null;
+  date: string;
+}
+
+export function useAddSavingsEntry() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ boxId, ...data }: SavingsEntryInput & { boxId: string }) =>
+      api.post<SavingsEntry>(`/wallet/savings/${boxId}/entries`, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateSavingsEntry() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id, ...data }: Partial<SavingsEntryInput> & { id: string }) =>
+      api.patch<SavingsEntry>(`/wallet/savings/entries/${id}`, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteSavingsEntry() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/wallet/savings/entries/${id}`),
     onSuccess: invalidate,
   });
 }

@@ -217,3 +217,55 @@ export class UpdateInstallmentDto {
   @IsString()
   categoryId?: string | null;
 }
+
+// ---------- Caixinhas (reserva/economias) ----------
+
+export class CreateSavingsBoxDto {
+  @IsString()
+  @MinLength(1)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  color?: string; // hex
+}
+
+export class UpdateSavingsBoxDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  color?: string;
+}
+
+// amount pode ser negativo (retirada), então sem @Min(0).
+export class CreateSavingsEntryDto {
+  @IsNumber()
+  amount: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsDateString()
+  date: string;
+}
+
+export class UpdateSavingsEntryDto {
+  @IsOptional()
+  @IsNumber()
+  amount?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+}

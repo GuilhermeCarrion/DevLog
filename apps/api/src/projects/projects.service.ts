@@ -25,7 +25,12 @@ export class ProjectsService {
   async findOne(userId: string, id: string) {
     const project = await this.prisma.project.findFirst({
       where: { id, userId },
-      include: { ...PROJECT_INCLUDE, groups: { orderBy: { name: 'asc' } } },
+      include: {
+        ...PROJECT_INCLUDE,
+        groups: {
+          orderBy: [{ priority: 'desc' }, { order: 'asc' }, { name: 'asc' }],
+        },
+      },
     });
     if (!project) throw new NotFoundException('Projeto não encontrado');
     return project;

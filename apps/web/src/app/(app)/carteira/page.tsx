@@ -3,21 +3,26 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  Minus,
   Pencil,
+  PiggyBank,
   Plus,
   Repeat,
   Tag as TagIcon,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { BalanceCard } from "@/components/wallet/balance-card";
 import { ExpenseChart } from "@/components/wallet/expense-chart";
 import { InstallmentDialog } from "@/components/wallet/installment-dialog";
 import { RecurringDialog } from "@/components/wallet/recurring-dialog";
+import { SavingsBoxDialog } from "@/components/wallet/savings-box-dialog";
+import { SavingsEntryDialog } from "@/components/wallet/savings-entry-dialog";
 import { TransactionDialog } from "@/components/wallet/transaction-dialog";
 import { WalletCategoryDialog } from "@/components/wallet/wallet-category-dialog";
 import { Button } from "@/components/ui/button";
@@ -26,9 +31,11 @@ import { Select } from "@/components/ui/select";
 import {
   useDeleteInstallment,
   useDeleteRecurring,
+  useDeleteSavingsEntry,
   useDeleteTransaction,
   useInstallments,
   useRecurringRules,
+  useSavingsBoxes,
   useTogglePaid,
   useTransactions,
   useWalletCategories,
@@ -38,6 +45,8 @@ import { formatBRL } from "@/lib/calc";
 import type {
   InstallmentPlan,
   RecurringRule,
+  SavingsBox,
+  SavingsEntry,
   TxType,
   WalletCategory,
   WalletTransaction,
@@ -61,7 +70,12 @@ function monthLabel(month: string) {
   return format(new Date(y, m - 1, 1), "MMMM 'de' yyyy", { locale: ptBR });
 }
 
-type Tab = "lancamentos" | "recorrentes" | "parcelas" | "categorias";
+type Tab =
+  | "lancamentos"
+  | "recorrentes"
+  | "parcelas"
+  | "caixinhas"
+  | "categorias";
 
 export default function CarteiraPage() {
   const [month, setMonth] = useState(currentMonth());
@@ -90,6 +104,15 @@ export default function CarteiraPage() {
     open: false,
     cat: null,
   });
+  const [boxDialog, setBoxDialog] = useState<{
+    open: boolean;
+    box: SavingsBox | null;
+  }>({ open: false, box: null });
+  const [entryDialog, setEntryDialog] = useState<{
+    open: boolean;
+    box: SavingsBox | null;
+    entry: SavingsEntry | null;
+  }>({ open: false, box: null, entry: null });
 
   const defaultDate = `${month}-15`;
 
@@ -130,10 +153,14 @@ export default function CarteiraPage() {
         </div>
       </div>
 
-      {/* Cartão de saldo + gráfico de gastos (lado a lado) */}
-      <div className="grid grid-cols-1 gap-4 lg:h-[170px] lg:grid-cols-2">
-        <BalanceCard value={summary?.totalBalance} />
-        <ExpenseChart data={summary?.expenseByCategory ?? []} />
+      {/* Cartão de saldo (tamanho de cartão) + gráfico ocupando o resto */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="w-full shrink-0 sm:max-w-[26rem] lg:w-[26rem]">
+          <BalanceCard value={summary?.totalBalance} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <ExpenseChart data={summary?.expenseByCategory ?? []} />
+        </div>
       </div>
 
       {/* Resumo do mês */}
@@ -170,6 +197,7 @@ export default function CarteiraPage() {
             ["lancamentos", "Lançamentos"],
             ["recorrentes", "Recorrentes"],
             ["parcelas", "Parcelas"],
+            ["caixinhas", "Caixinhas"],
             ["categorias", "Categorias"],
           ] as const
         ).map(([key, label]) => (
@@ -206,6 +234,18 @@ export default function CarteiraPage() {
           onEdit={(plan) => setInstallmentDialog({ open: true, plan })}
         />
       )}
+      {tab === "caixinhas" && (
+        <CaixinhasTab
+          onNewBox={() => setBoxDialog({ open: true, box: null })}
+          onEditBox={(box) => setBoxDialog({ open: true, box })}
+          onAddEntry={(box) =>
+            setEntryDialog({ open: true, box, entry: null })
+          }
+          onEditEntry={(box, entry) =>
+            setEntryDialog({ open: true, box, entry })
+          }
+        />
+      )}
       {tab === "categorias" && (
         <CategoriasTab
           onNew={() => setCatDialog({ open: true, cat: null })}
@@ -234,6 +274,17 @@ export default function CarteiraPage() {
         category={catDialog.cat}
         open={catDialog.open}
         onOpenChange={(open) => setCatDialog((s) => ({ ...s, open }))}
+      />
+      <SavingsBoxDialog
+        box={boxDialog.box}
+        open={boxDialog.open}
+        onOpenChange={(open) => setBoxDialog((s) => ({ ...s, open }))}
+      />
+      <SavingsEntryDialog
+        box={entryDialog.box}
+        entry={entryDialog.entry}
+        open={entryDialog.open}
+        onOpenChange={(open) => setEntryDialog((s) => ({ ...s, open }))}
       />
     </div>
   );
@@ -594,6 +645,190 @@ function ParcelasTab({
                 >
                   <Trash2 className="size-3.5" />
                 </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- Caixinhas (reserva) ----------------
+
+function CaixinhasTab({
+  onNewBox,
+  onEditBox,
+  onAddEntry,
+  onEditEntry,
+}: {
+  onNewBox: () => void;
+  onEditBox: (b: SavingsBox) => void;
+  onAddEntry: (b: SavingsBox) => void;
+  onEditEntry: (b: SavingsBox, e: SavingsEntry) => void;
+}) {
+  const { data: boxes } = useSavingsBoxes();
+  const delEntry = useDeleteSavingsEntry();
+  const confirm = useConfirm();
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const total = (boxes ?? []).reduce((a, b) => a + b.balance, 0);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="outline" onClick={onNewBox}>
+          <PiggyBank className="size-4" />
+          Nova caixinha
+        </Button>
+        {!!boxes?.length && (
+          <span className="text-sm text-muted-foreground">
+            Total guardado:{" "}
+            <span className="font-mono font-semibold text-primary">
+              {formatBRL(total)}
+            </span>
+          </span>
+        )}
+      </div>
+
+      {!boxes?.length ? (
+        <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+          Nenhuma caixinha. Crie uma reserva e registre seus aportes.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {boxes.map((b) => {
+            const open = expanded === b.id;
+            return (
+              <div
+                key={b.id}
+                className="overflow-hidden rounded-lg border border-border bg-card"
+              >
+                <div className="flex items-center gap-3 p-3">
+                  <button
+                    onClick={() => setExpanded(open ? null : b.id)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
+                    title={open ? "Recolher" : "Ver histórico"}
+                  >
+                    <span
+                      className="size-3 shrink-0 rounded-full"
+                      style={{ background: b.color }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{b.name}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {b.entries.length}{" "}
+                        {b.entries.length === 1 ? "lançamento" : "lançamentos"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-mono text-base font-semibold text-primary">
+                      {formatBRL(b.balance)}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform",
+                        open && "rotate-180",
+                      )}
+                    />
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button size="sm" onClick={() => onAddEntry(b)}>
+                      <Plus className="size-3.5" />
+                      Lançar
+                    </Button>
+                    <button
+                      onClick={() => onEditBox(b)}
+                      title="Editar caixinha"
+                      className="rounded p-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground cursor-pointer"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {open && (
+                  <div className="border-t border-border/60">
+                    {!b.entries.length ? (
+                      <p className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        Nenhum lançamento ainda.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col divide-y divide-border/40">
+                        {b.entries.map((e) => {
+                          const out = e.amount < 0;
+                          return (
+                            <div
+                              key={e.id}
+                              className="group flex items-center gap-3 px-3 py-2 pl-6"
+                            >
+                              <span
+                                className={cn(
+                                  "flex size-6 shrink-0 items-center justify-center rounded-full",
+                                  out
+                                    ? "bg-rose-400/15 text-rose-300"
+                                    : "bg-primary/15 text-primary",
+                                )}
+                              >
+                                {out ? (
+                                  <Minus className="size-3.5" />
+                                ) : (
+                                  <Plus className="size-3.5" />
+                                )}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm">
+                                  {e.description || (out ? "Retirada" : "Aporte")}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {format(new Date(e.date), "dd/MM/yyyy", {
+                                    locale: ptBR,
+                                  })}
+                                </p>
+                              </div>
+                              <span
+                                className="shrink-0 font-mono text-sm"
+                                style={{
+                                  color: out ? EXPENSE_COLOR : INCOME_COLOR,
+                                }}
+                              >
+                                {out ? "−" : "+"}
+                                {formatBRL(Math.abs(e.amount))}
+                              </span>
+                              <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  onClick={() => onEditEntry(b, e)}
+                                  title="Editar"
+                                  className="rounded p-1 text-muted-foreground/60 hover:bg-accent hover:text-foreground cursor-pointer"
+                                >
+                                  <Pencil className="size-3.5" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: "Excluir lançamento",
+                                      description:
+                                        "Excluir este lançamento da caixinha?",
+                                      confirmLabel: "Excluir",
+                                      destructive: true,
+                                    });
+                                    if (!ok) return;
+                                    delEntry.mutate(e.id, {
+                                      onError: (er) => toast.error(er.message),
+                                    });
+                                  }}
+                                  title="Excluir"
+                                  className="rounded p-1 text-muted-foreground/60 hover:bg-accent hover:text-destructive cursor-pointer"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

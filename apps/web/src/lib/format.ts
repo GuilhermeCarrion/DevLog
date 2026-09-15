@@ -9,6 +9,14 @@ export function formatDateTime(iso: string) {
   return format(new Date(iso), "dd/MM 'às' HH:mm", { locale: ptBR });
 }
 
+// ISO → valor de <input type="datetime-local"> ("YYYY-MM-DDTHH:mm", hora local)
+export function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // Formata uma quantidade de segundos: "1h 23m" / "45m" / "12s"
 export function formatSeconds(totalSeconds: number) {
   const seconds = Math.max(0, Math.floor(totalSeconds));

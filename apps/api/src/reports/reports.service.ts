@@ -77,17 +77,23 @@ export class ReportsService {
     const context = await this.buildContext(userId, projectId, dto);
     const buffer = await this.runPython(context);
 
-    // Snapshot: guarda o contexto pra rebaixar fiel depois
+    // Nome do arquivo: o que o usuário digitou (saneado) ou o padrão do professor
+    const filename = dto.filename?.trim()
+      ? this.sanitizeFilename(dto.filename)
+      : this.defaultFilename(String(context.semana));
+
+    // Snapshot: guarda o contexto (e o nome) pra rebaixar fiel depois
     await this.prisma.report.create({
       data: {
         projectId,
         week: String(context.semana),
         percentTotal: Number(context.percent_total) || 0,
+        filename,
         contextJson: JSON.stringify(context),
       },
     });
 
-    return { filename: this.filename(String(context.semana)), buffer };
+    return { filename, buffer };
   }
 
   // Candidatos pré-preenchidos para a tela de revisão.
@@ -256,8 +262,31 @@ export class ReportsService {
     }));
   }
 
-  private filename(semana: string): string {
+  // Nome padrão pedido pelo professor: RAP-TDS-{ano}.{semana com 3 dígitos}.docx
+  // (ex.: semana "13/2026" → "RAP-TDS-2026.013.docx").
+  private defaultFilename(semana: string): string {
+    const m = /^(\d{1,3})\/(\d{4})$/.exec(semana.trim());
+    if (m) {
+      const week = String(Number(m[1])).padStart(3, '0');
+      return `RAP-TDS-${m[2]}.${week}.docx`;
+    }
+    // Formato inesperado: cai num nome seguro sem quebrar o download
     return `relatorio-${semana.replace(/[^\w]+/g, '-')}.docx`;
+  }
+
+  // Garante um nome de arquivo seguro (sem caminho) e com extensão .docx
+  private sanitizeFilename(name: string): string {
+    const cleaned = name
+      .trim()
+      .replace(/[\\/]+/g, '-') // separadores de path viram "-"
+      .replace(/[<>:"|?*]/g, '') // caracteres reservados
+      // remove caracteres de controle (ASCII < 32) sem regex de control-char
+      .split('')
+      .filter((ch) => ch.charCodeAt(0) >= 32)
+      .join('')
+      .trim();
+    const safe = cleaned || 'relatorio';
+    return /\.docx$/i.test(safe) ? safe : `${safe}.docx`;
   }
 
   private async avgProgress(projectId: string): Promise<number> {
@@ -349,7 +378,10 @@ export class ReportsService {
     }
     const context = JSON.parse(report.contextJson) as Record<string, unknown>;
     const buffer = await this.runPython(context);
-    return { filename: this.filename(report.week), buffer };
+    return {
+      filename: report.filename ?? this.defaultFilename(report.week),
+      buffer,
+    };
   }
 
   // ---------- helpers ----------

@@ -222,6 +222,7 @@ function PlanSessionDialog({
   const [projectId, setProjectId] = useState('');
   const [name, setName] = useState('');
   const [plannedFor, setPlannedFor] = useState('');
+  const [dueAt, setDueAt] = useState('');
   const [notes, setNotes] = useState('');
   const [taskIds, setTaskIds] = useState<string[]>([]);
 
@@ -239,11 +240,16 @@ function PlanSessionDialog({
       toast.error('Escolha projeto e data');
       return;
     }
+    if (dueAt && new Date(dueAt) < new Date(plannedFor)) {
+      toast.error('O prazo não pode ser antes do início.');
+      return;
+    }
     createPlanned.mutate(
       {
         projectId: selectedProject,
         name: name.trim() || undefined,
         plannedFor: new Date(plannedFor).toISOString(),
+        dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
         notes: notes || undefined,
         taskIds: taskIds.length ? taskIds : undefined,
       },
@@ -253,6 +259,7 @@ function PlanSessionDialog({
           setName('');
           setNotes('');
           setPlannedFor('');
+          setDueAt('');
           setTaskIds([]);
           toast.success('Plano criado!');
         },
@@ -298,13 +305,22 @@ function PlanSessionDialog({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Quando</Label>
+            <Label>Início previsto</Label>
             <Input
               type="datetime-local"
               value={plannedFor}
               onChange={(e) => setPlannedFor(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label>Prazo (fim previsto) — opcional</Label>
+          <Input
+            type="datetime-local"
+            value={dueAt}
+            onChange={(e) => setDueAt(e.target.value)}
+          />
         </div>
 
         {tasks && tasks.length > 0 && (

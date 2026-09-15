@@ -88,12 +88,22 @@ export default function AgendaPage() {
     return all.filter((s) => s.projectId === filter);
   }, [data, filter]);
 
+  // Prazos de sessões (dueAt no mês)
+  const dueSessions = useMemo(() => {
+    const all = data?.dueSessions ?? [];
+    if (!filter || filter === 'pessoal') return filter ? [] : all;
+    return all.filter((s) => s.projectId === filter);
+  }, [data, filter]);
+
   const dayItems = items.filter((i) => isSameDay(new Date(i.date), selectedDay));
   const daySessions = plannedSessions.filter(
     (s) => s.plannedFor && isSameDay(new Date(s.plannedFor), selectedDay),
   );
   const dayDoneSessions = doneSessions.filter(
     (s) => s.startedAt && isSameDay(new Date(s.startedAt), selectedDay),
+  );
+  const dayDueSessions = dueSessions.filter(
+    (s) => s.dueAt && isSameDay(new Date(s.dueAt), selectedDay),
   );
 
   return (
@@ -186,6 +196,9 @@ export default function AgendaPage() {
                 const hasSession = plannedSessions.some(
                   (s) => s.plannedFor && isSameDay(new Date(s.plannedFor), day),
                 );
+                const hasDue = dueSessions.some(
+                  (s) => s.dueAt && isSameDay(new Date(s.dueAt), day),
+                );
                 // Sessões executadas no dia → intensidade estilo heatmap
                 const doneCount = doneSessions.filter(
                   (s) => s.startedAt && isSameDay(new Date(s.startedAt), day),
@@ -234,6 +247,12 @@ export default function AgendaPage() {
                           className="size-1.5 rounded-full bg-primary ring-2 ring-primary/30"
                         />
                       )}
+                      {hasDue && (
+                        <span
+                          title="Prazo de sessão"
+                          className="size-1.5 rounded-full bg-amber-500 ring-2 ring-amber-500/30"
+                        />
+                      )}
                       {dayItemsAll.slice(0, 4).map((item) => (
                         <span
                           key={item.id}
@@ -266,6 +285,9 @@ export default function AgendaPage() {
             </span>
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-primary" /> sessão planejada
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-amber-500" /> prazo de sessão
             </span>
             {Object.entries(TYPE_META).map(([type, meta]) => (
               <span key={type} className="flex items-center gap-1.5">
@@ -302,11 +324,33 @@ export default function AgendaPage() {
           {!isLoading &&
             !dayItems.length &&
             !daySessions.length &&
-            !dayDoneSessions.length && (
+            !dayDoneSessions.length &&
+            !dayDueSessions.length && (
               <p className="rounded-lg border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
                 Nada marcado para este dia.
               </p>
             )}
+
+          {/* Prazos de sessão neste dia (fim previsto) */}
+          {dayDueSessions.map((s) => (
+            <div
+              key={`due-${s.id}`}
+              className="flex flex-col gap-1 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CalendarClock className="size-4 text-amber-500" />
+                Prazo da sessão — {s.project.name}
+              </div>
+              {s.dueAt && (
+                <span className="text-xs text-muted-foreground">
+                  fim previsto {formatDateTime(s.dueAt)}
+                </span>
+              )}
+              {s.name && (
+                <span className="text-xs text-muted-foreground">{s.name}</span>
+              )}
+            </div>
+          ))}
 
           {/* Sessões executadas neste dia (o que foi feito) */}
           {dayDoneSessions.map((s) => (

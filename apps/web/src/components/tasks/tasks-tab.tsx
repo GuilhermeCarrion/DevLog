@@ -1,6 +1,15 @@
 'use client';
 
-import { CheckCircle2, Copy, FolderPlus, Pencil, Plus } from 'lucide-react';
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FolderPlus,
+  Pencil,
+  Pin,
+  Plus,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { GroupDialog } from '@/components/tasks/group-dialog';
@@ -12,9 +21,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import { useGroups, useTasks } from '@/hooks/use-tasks';
+import { useGroups, useReorderGroups, useTasks } from '@/hooks/use-tasks';
 import { copyText, taskToText } from '@/lib/task-text';
 import type { Group, Task, TaskPriority, TaskStatus } from '@/lib/types';
+
+// Tasks de maior prioridade primeiro dentro de cada grupo.
+const TASK_PRIORITY_RANK: Record<TaskPriority, number> = {
+  ALTA: 0,
+  MEDIA: 1,
+  BAIXA: 2,
+};
 
 const PRIORITY_VARIANT: Record<TaskPriority, 'secondary' | 'warning' | 'destructive'> = {
   BAIXA: 'secondary',
@@ -38,6 +54,7 @@ export function TasksTab({ projectId }: { projectId: string }) {
     groupId: groupFilter,
   });
   const { data: groups } = useGroups(projectId);
+  const reorder = useReorderGroups(projectId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -51,22 +68,57 @@ export function TasksTab({ projectId }: { projectId: string }) {
     return (tasks ?? []).filter((t) => t.status !== 'CONCLUIDO');
   }, [tasks, statusFilter, showDone]);
 
-  // Agrupa por grupo (tasks sem grupo ficam em "Sem grupo", no fim)
-  const grouped = useMemo(() => {
-    const map = new Map<
-      string,
-      { name: string; group: Group | null; tasks: Task[] }
-    >();
+  // Seções na ordem dos grupos (prioridade → ordem manual → nome, vinda da API).
+  // Tasks sem grupo ficam por último; dentro de cada grupo, maior prioridade primeiro.
+  const sections = useMemo(() => {
+    const byGroup = new Map<string, Task[]>();
+    const noGroup: Task[] = [];
     for (const task of visibleTasks) {
-      const key = task.group?.id ?? '__none__';
-      const name = task.group?.name ?? 'Sem grupo';
-      if (!map.has(key)) map.set(key, { name, group: task.group, tasks: [] });
-      map.get(key)!.tasks.push(task);
+      if (task.group?.id) {
+        if (!byGroup.has(task.group.id)) byGroup.set(task.group.id, []);
+        byGroup.get(task.group.id)!.push(task);
+      } else {
+        noGroup.push(task);
+      }
     }
-    return [...map.entries()].sort(([a], [b]) =>
-      a === '__none__' ? 1 : b === '__none__' ? -1 : 0,
-    );
-  }, [visibleTasks]);
+    const sortByPriority = (arr: Task[]) =>
+      [...arr].sort(
+        (a, b) => TASK_PRIORITY_RANK[a.priority] - TASK_PRIORITY_RANK[b.priority],
+      );
+
+    const result: {
+      key: string;
+      name: string;
+      group: Group | null;
+      tasks: Task[];
+    }[] = [];
+    for (const g of groups ?? []) {
+      const ts = byGroup.get(g.id);
+      if (ts?.length) {
+        result.push({ key: g.id, name: g.name, group: g, tasks: sortByPriority(ts) });
+      }
+    }
+    if (noGroup.length) {
+      result.push({
+        key: '__none__',
+        name: 'Sem grupo',
+        group: null,
+        tasks: sortByPriority(noGroup),
+      });
+    }
+    return result;
+  }, [visibleTasks, groups]);
+
+  // Troca dois grupos de posição e persiste a ordem completa.
+  function swapGroups(idA: string, idB: string) {
+    if (!groups) return;
+    const ids = groups.map((g) => g.id);
+    const a = ids.indexOf(idA);
+    const b = ids.indexOf(idB);
+    if (a < 0 || b < 0) return;
+    [ids[a], ids[b]] = [ids[b], ids[a]];
+    reorder.mutate(ids, { onError: (e) => toast.error(e.message) });
+  }
 
   function openNewGroup() {
     setEditingGroup(null);
@@ -143,33 +195,69 @@ export function TasksTab({ projectId }: { projectId: string }) {
         </p>
       )}
 
-      {grouped.map(([key, group]) => (
-        <div key={key} className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            {group.group?.color && (
-              <span
-                className="size-2.5 rounded-full"
-                style={{ background: group.group.color }}
-              />
-            )}
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.name}
-            </h3>
-            {group.group && (
-              <button
-                title="Editar grupo"
-                onClick={() => {
-                  setEditingGroup(group.group);
-                  setGroupDialogOpen(true);
-                }}
-                className="rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-foreground cursor-pointer"
-              >
-                <Pencil className="size-3" />
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {group.tasks.map((task) => (
+      {sections.map((section, idx) => {
+        const g = section.group;
+        const prev = sections[idx - 1]?.group;
+        const next = sections[idx + 1]?.group;
+        const canUp = !!g && !!prev && prev.priority === g.priority;
+        const canDown = !!g && !!next && next.priority === g.priority;
+        return (
+          <div key={section.key} className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              {g?.color && (
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ background: g.color }}
+                />
+              )}
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.name}
+              </h3>
+              {g?.priority && (
+                <span
+                  title="Grupo prioritário"
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary"
+                >
+                  <Pin className="size-2.5" />
+                  Prioridade
+                </span>
+              )}
+              {g && (
+                <>
+                  <button
+                    title="Editar grupo"
+                    onClick={() => {
+                      setEditingGroup(g);
+                      setGroupDialogOpen(true);
+                    }}
+                    className="rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-foreground cursor-pointer"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                  {/* Reordenar grupo manualmente (dentro do mesmo bucket de prioridade) */}
+                  <div className="ml-auto flex items-center">
+                    <button
+                      title="Subir grupo"
+                      disabled={!canUp || reorder.isPending}
+                      onClick={() => prev && swapGroups(g.id, prev.id)}
+                      className="rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronUp className="size-3.5" />
+                    </button>
+                    <button
+                      title="Descer grupo"
+                      disabled={!canDown || reorder.isPending}
+                      onClick={() => next && swapGroups(g.id, next.id)}
+                      className="rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronDown className="size-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {section.tasks.map((task) => (
               <div
                 key={task.id}
                 onClick={() => {
@@ -245,10 +333,11 @@ export function TasksTab({ projectId }: { projectId: string }) {
                   </div>
                 </div>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <TaskDialog
         projectId={projectId}

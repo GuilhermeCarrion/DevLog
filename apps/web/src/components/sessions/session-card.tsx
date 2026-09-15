@@ -22,7 +22,7 @@ import {
   useStartPlanned,
   useUpdateSession,
 } from '@/hooks/use-sessions';
-import { formatDateTime, formatSeconds } from '@/lib/format';
+import { formatDateTime, formatSeconds, toDatetimeLocal } from '@/lib/format';
 import { sessionStatus, type WorkSession } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -55,6 +55,7 @@ export function SessionCard({
 
   const [editOpen, setEditOpen] = useState(false);
   const [name, setName] = useState('');
+  const [dueAt, setDueAt] = useState('');
   const [notes, setNotes] = useState('');
   const [commits, setCommits] = useState('');
   const [nextStep, setNextStep] = useState('');
@@ -62,6 +63,7 @@ export function SessionCard({
   useEffect(() => {
     if (editOpen) {
       setName(session.name ?? '');
+      setDueAt(toDatetimeLocal(session.dueAt));
       setNotes(session.notes ?? '');
       setCommits(session.commits ?? '');
       setNextStep(session.nextStep ?? '');
@@ -73,6 +75,8 @@ export function SessionCard({
       {
         id: session.id,
         name: isPlan ? name || undefined : undefined,
+        // '' limpa o prazo (null); valor define; mantém quando inalterado
+        dueAt: dueAt ? new Date(dueAt).toISOString() : null,
         notes: notes || undefined,
         commits: commits || undefined,
         nextStep: nextStep || undefined,
@@ -206,6 +210,15 @@ export function SessionCard({
             {isPlan ? 'plano p/' : 'planejada p/'} {formatDateTime(session.plannedFor)}
           </span>
         )}
+        {session.dueAt && (
+          <span
+            className="flex items-center gap-1 text-amber-500"
+            title="Prazo / fim previsto"
+          >
+            <CalendarClock className="size-3.5" />
+            prazo {formatDateTime(session.dueAt)}
+          </span>
+        )}
         {session.startedAt && (
           <span>início {formatDateTime(session.startedAt)}</span>
         )}
@@ -278,6 +291,14 @@ export function SessionCard({
               />
             </div>
           )}
+          <div className="flex flex-col gap-1.5">
+            <Label>Prazo (fim previsto)</Label>
+            <Input
+              type="datetime-local"
+              value={dueAt}
+              onChange={(e) => setDueAt(e.target.value)}
+            />
+          </div>
           <div className="flex flex-col gap-1.5">
             <Label>Notas</Label>
             <Textarea

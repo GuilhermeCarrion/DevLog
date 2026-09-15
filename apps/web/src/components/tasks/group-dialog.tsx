@@ -42,11 +42,13 @@ export function GroupDialog({
 
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(NO_COLOR);
+  const [priority, setPriority] = useState(false);
 
   useEffect(() => {
     if (open) {
       setName(group?.name ?? '');
       setColor(group?.color ?? NO_COLOR);
+      setPriority(group?.priority ?? false);
     }
   }, [open, group]);
 
@@ -55,6 +57,7 @@ export function GroupDialog({
     const data = {
       name: name.trim(),
       color: color === NO_COLOR ? undefined : color,
+      priority,
     };
     const options = {
       onSuccess: () => {
@@ -124,6 +127,21 @@ export function GroupDialog({
               </button>
             </div>
           </div>
+
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={priority}
+              onChange={(e) => setPriority(e.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="font-medium">Prioridade</span>
+              <span className="text-xs text-muted-foreground">
+                Fixa o grupo no topo do quadro, antes dos demais.
+              </span>
+            </span>
+          </label>
 
           <DialogFooter className="justify-between">
             {group && (

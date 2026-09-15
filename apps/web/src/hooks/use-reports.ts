@@ -62,6 +62,7 @@ export interface GenerateReportInput {
   to: string;
   semana?: string;
   data?: string;
+  filename?: string;
   percentTotal?: number;
   realizadas?: ReportRow[];
   proximas?: ReportRow[];

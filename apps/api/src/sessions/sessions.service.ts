@@ -76,6 +76,7 @@ export class SessionsService {
         projectId: dto.projectId,
         name: dto.name,
         plannedFor: new Date(dto.plannedFor),
+        dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
         notes: dto.notes,
         tasks: dto.taskIds?.length
           ? { connect: dto.taskIds.map((id) => ({ id })) }
@@ -219,6 +220,13 @@ export class SessionsService {
       data: {
         name: dto.name ?? undefined,
         plannedFor: dto.plannedFor ? new Date(dto.plannedFor) : undefined,
+        // undefined = mantém; null/'' = limpa; string = define
+        dueAt:
+          dto.dueAt === undefined
+            ? undefined
+            : dto.dueAt
+              ? new Date(dto.dueAt)
+              : null,
         notes: dto.notes ?? undefined,
         commits: dto.commits ?? undefined,
         nextStep: dto.nextStep ?? undefined,

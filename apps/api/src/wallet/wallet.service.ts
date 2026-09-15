@@ -8,10 +8,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateInstallmentDto,
   CreateRecurringDto,
+  CreateSavingsBoxDto,
+  CreateSavingsEntryDto,
   CreateTransactionDto,
   TransactionsQueryDto,
   UpdateInstallmentDto,
   UpdateRecurringDto,
+  UpdateSavingsBoxDto,
+  UpdateSavingsEntryDto,
   UpdateTransactionDto,
   UpsertWalletCategoryDto,
   UpdateWalletCategoryDto,
@@ -551,6 +555,82 @@ export class WalletService {
     });
   }
 
+  // ==================== Caixinhas (reserva/economias) ====================
+
+  async listSavingsBoxes(userId: string) {
+    const boxes = await this.prisma.savingsBox.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        entries: { orderBy: [{ date: 'desc' }, { createdAt: 'desc' }] },
+      },
+    });
+    // saldo = soma dos aportes/retiradas de cada caixinha
+    return boxes.map((b) => ({
+      ...b,
+      balance: round2(b.entries.reduce((acc, e) => acc + e.amount, 0)),
+    }));
+  }
+
+  createSavingsBox(userId: string, dto: CreateSavingsBoxDto) {
+    return this.prisma.savingsBox.create({
+      data: { userId, name: dto.name, color: dto.color ?? '#a3e635' },
+    });
+  }
+
+  async updateSavingsBox(userId: string, id: string, dto: UpdateSavingsBoxDto) {
+    await this.assertBox(userId, id);
+    return this.prisma.savingsBox.update({
+      where: { id },
+      data: { name: dto.name, color: dto.color },
+    });
+  }
+
+  async removeSavingsBox(userId: string, id: string) {
+    await this.assertBox(userId, id);
+    // onDelete: Cascade remove os lançamentos da caixinha junto
+    return this.prisma.savingsBox.delete({ where: { id } });
+  }
+
+  async addSavingsEntry(
+    userId: string,
+    boxId: string,
+    dto: CreateSavingsEntryDto,
+  ) {
+    await this.assertBox(userId, boxId);
+    return this.prisma.savingsEntry.create({
+      data: {
+        userId,
+        boxId,
+        amount: round2(dto.amount),
+        description: dto.description ?? null,
+        date: parseDate(dto.date),
+      },
+    });
+  }
+
+  async updateSavingsEntry(
+    userId: string,
+    id: string,
+    dto: UpdateSavingsEntryDto,
+  ) {
+    await this.assertEntry(userId, id);
+    return this.prisma.savingsEntry.update({
+      where: { id },
+      data: {
+        amount: dto.amount === undefined ? undefined : round2(dto.amount),
+        description:
+          dto.description === undefined ? undefined : (dto.description ?? null),
+        date: dto.date ? parseDate(dto.date) : undefined,
+      },
+    });
+  }
+
+  async removeSavingsEntry(userId: string, id: string) {
+    await this.assertEntry(userId, id);
+    return this.prisma.savingsEntry.delete({ where: { id } });
+  }
+
   // ==================== ownership ====================
 
   private async assertCategory(userId: string, id: string) {
@@ -583,5 +663,22 @@ export class WalletService {
       select: { id: true },
     });
     if (!p) throw new NotFoundException('Parcelamento não encontrado');
+  }
+
+  private async assertBox(userId: string, id: string) {
+    const b = await this.prisma.savingsBox.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!b) throw new NotFoundException('Caixinha não encontrada');
+  }
+
+  private async assertEntry(userId: string, id: string) {
+    const e = await this.prisma.savingsEntry.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!e)
+      throw new NotFoundException('Lançamento da caixinha não encontrado');
   }
 }

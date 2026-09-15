@@ -4,7 +4,15 @@ import { Check, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import type { Task } from '@/lib/types';
+import type { TaskStatus } from '@/lib/types';
+
+// Forma mínima que a lista precisa — Task e os candidatos do relatório se encaixam.
+export interface TaskSelectItem {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  group?: { name: string; color: string | null } | null;
+}
 
 // Lista reutilizável de seleção de tasks (checkboxes) com busca por texto e
 // concluídas escondidas por padrão. As tasks já selecionadas continuam visíveis
@@ -15,7 +23,7 @@ export function TaskSelectList({
   onToggle,
   className,
 }: {
-  tasks: Task[];
+  tasks: TaskSelectItem[];
   selectedIds: string[];
   onToggle: (id: string) => void;
   className?: string;

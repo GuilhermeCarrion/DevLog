@@ -36,7 +36,7 @@ export function BalanceCard({ value }: { value: number | undefined }) {
 
   return (
     <div
-      className="relative flex h-full min-h-[150px] flex-col justify-between overflow-hidden rounded-2xl p-4 text-white shadow-lg"
+      className="relative flex aspect-[1.586/1] w-full flex-col justify-between overflow-hidden rounded-2xl p-5 text-white shadow-lg"
       style={{
         background:
           "radial-gradient(120% 120% at 85% 15%, #6f9a24 0%, #35471a 42%, #16181d 78%)",
@@ -51,7 +51,7 @@ export function BalanceCard({ value }: { value: number | undefined }) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-white/70">Saldo guardado</p>
-          <p className="mt-0.5 font-mono text-2xl font-semibold">
+          <p className="mt-1 font-mono text-3xl font-semibold">
             {hidden ? (
               <span className="tracking-widest">R$ ••••••</span>
             ) : (
@@ -72,7 +72,7 @@ export function BalanceCard({ value }: { value: number | undefined }) {
       </div>
 
       {/* chip */}
-      <svg width="34" height="26" viewBox="0 0 42 32" className="opacity-70">
+      <svg width="42" height="32" viewBox="0 0 42 32" className="opacity-70">
         <rect
           x="1"
           y="1"

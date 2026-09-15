@@ -33,6 +33,8 @@ model User {
   walletTransactions WalletTransaction[]
   recurringRules     RecurringRule[]
   installmentPlans   InstallmentPlan[]
+  savingsBoxes       SavingsBox[]
+  savingsEntries     SavingsEntry[]
 }
 
 // ============ Núcleo ============
@@ -174,6 +176,8 @@ model Group {
   id        String  @id @default(cuid())
   name      String
   color     String? // hex opcional, ex: "#a3e635"
+  order     Int     @default(0) // ordem manual (crescente); empate desempata por nome
+  priority  Boolean @default(false) // grupo "fixado" — sempre antes dos demais
   projectId String
   project   Project @relation(fields: [projectId], references: [id])
   tasks     Task[]
@@ -222,7 +226,8 @@ model WorkSession {
   projectId  String
   project    Project   @relation(fields: [projectId], references: [id])
   name       String? // nome do plano/sprint (nos templates)
-  plannedFor DateTime? // preenchido quando planejada com antecedência
+  plannedFor DateTime? // início previsto (preenchido quando planejada com antecedência)
+  dueAt      DateTime? // prazo / fim previsto da sessão
   startedAt  DateTime?
   endedAt    DateTime?
 
@@ -291,6 +296,7 @@ model Report {
   generatedAt  DateTime     @default(now())
   percentTotal Int
   filePath     String?
+  filename     String? // nome do arquivo baixado (ex: RAP-TDS-2026.013.docx)
   // Snapshot do contexto renderizado (JSON) — permite rebaixar fiel depois,
   // independente de tasks/sessões/perfil terem mudado.
   contextJson  String?
@@ -414,4 +420,32 @@ model InstallmentPlan {
   firstDueDate      DateTime
   createdAt         DateTime            @default(now())
   transactions      WalletTransaction[]
+}
+
+// Caixinha de economias / reserva — acumula um saldo por meio de lançamentos
+model SavingsBox {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  name      String
+  color     String         @default("#a3e635")
+  createdAt DateTime       @default(now())
+  entries   SavingsEntry[]
+
+  @@index([userId])
+}
+
+// Lançamento numa caixinha (aporte positivo, retirada negativa)
+model SavingsEntry {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  boxId       String
+  box         SavingsBox @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  amount      Float // positivo = aporte, negativo = retirada
+  description String?
+  date        DateTime
+  createdAt   DateTime   @default(now())
+
+  @@index([userId, boxId])
 }

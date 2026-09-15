@@ -7,7 +7,15 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { IsHexColor, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsBoolean,
+  IsHexColor,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/current-user.decorator';
 import { GroupsService } from './groups.service';
@@ -20,6 +28,10 @@ class CreateGroupDto {
   @IsOptional()
   @IsHexColor()
   color?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  priority?: boolean;
 }
 
 class UpdateGroupDto {
@@ -31,6 +43,17 @@ class UpdateGroupDto {
   @IsOptional()
   @IsHexColor()
   color?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  priority?: boolean;
+}
+
+class ReorderGroupsDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
 }
 
 @Controller()
@@ -49,6 +72,15 @@ export class GroupsController {
     @Body() dto: CreateGroupDto,
   ) {
     return this.groupsService.create(user.id, projectId, dto);
+  }
+
+  @Patch('projects/:projectId/groups/reorder')
+  reorder(
+    @CurrentUser() user: AuthUser,
+    @Param('projectId') projectId: string,
+    @Body() dto: ReorderGroupsDto,
+  ) {
+    return this.groupsService.reorder(user.id, projectId, dto.ids);
   }
 
   @Patch('groups/:id')

@@ -1,4 +1,10 @@
-import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
 
 // Plano/sprint (template): criado no planejamento, começa sem startedAt e pode
 // ser iniciado N vezes.
@@ -12,6 +18,10 @@ export class CreatePlannedSessionDto {
 
   @IsDateString()
   plannedFor: string;
+
+  @IsOptional()
+  @IsDateString()
+  dueAt?: string; // prazo / fim previsto
 
   @IsOptional()
   @IsString()
@@ -69,4 +79,10 @@ export class UpdateSessionDto extends FinishSessionDto {
   @IsOptional()
   @IsDateString()
   plannedFor?: string;
+
+  // Aceita string (define), null ou '' (limpa) — validação só quando há valor
+  @IsOptional()
+  @ValidateIf((o: UpdateSessionDto) => o.dueAt !== null && o.dueAt !== '')
+  @IsDateString()
+  dueAt?: string | null;
 }

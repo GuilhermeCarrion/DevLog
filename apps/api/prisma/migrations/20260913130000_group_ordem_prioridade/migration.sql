@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Group" ADD COLUMN     "order" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "priority" BOOLEAN NOT NULL DEFAULT false;
+

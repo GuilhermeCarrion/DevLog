@@ -13,11 +13,15 @@ import type { AuthUser } from '../auth/current-user.decorator';
 import {
   CreateInstallmentDto,
   CreateRecurringDto,
+  CreateSavingsBoxDto,
+  CreateSavingsEntryDto,
   CreateTransactionDto,
   MonthQueryDto,
   TransactionsQueryDto,
   UpdateInstallmentDto,
   UpdateRecurringDto,
+  UpdateSavingsBoxDto,
+  UpdateSavingsEntryDto,
   UpdateTransactionDto,
   UpsertWalletCategoryDto,
   UpdateWalletCategoryDto,
@@ -153,6 +157,57 @@ export class WalletController {
   @Get('summary')
   summary(@CurrentUser() u: AuthUser, @Query() q: MonthQueryDto) {
     return this.wallet.summary(u.id, q.month);
+  }
+
+  // ----- caixinhas (reserva/economias) -----
+  @Get('savings')
+  listSavings(@CurrentUser() u: AuthUser) {
+    return this.wallet.listSavingsBoxes(u.id);
+  }
+
+  @Post('savings')
+  createSavings(@CurrentUser() u: AuthUser, @Body() dto: CreateSavingsBoxDto) {
+    return this.wallet.createSavingsBox(u.id, dto);
+  }
+
+  @Patch('savings/:id')
+  updateSavings(
+    @CurrentUser() u: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateSavingsBoxDto,
+  ) {
+    return this.wallet.updateSavingsBox(u.id, id, dto);
+  }
+
+  @Delete('savings/:id')
+  removeSavings(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    return this.wallet.removeSavingsBox(u.id, id);
+  }
+
+  @Post('savings/:id/entries')
+  addSavingsEntry(
+    @CurrentUser() u: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: CreateSavingsEntryDto,
+  ) {
+    return this.wallet.addSavingsEntry(u.id, id, dto);
+  }
+
+  @Patch('savings/entries/:entryId')
+  updateSavingsEntry(
+    @CurrentUser() u: AuthUser,
+    @Param('entryId') entryId: string,
+    @Body() dto: UpdateSavingsEntryDto,
+  ) {
+    return this.wallet.updateSavingsEntry(u.id, entryId, dto);
+  }
+
+  @Delete('savings/entries/:entryId')
+  removeSavingsEntry(
+    @CurrentUser() u: AuthUser,
+    @Param('entryId') entryId: string,
+  ) {
+    return this.wallet.removeSavingsEntry(u.id, entryId);
   }
 
   // ----- integração com a Calculadora -----

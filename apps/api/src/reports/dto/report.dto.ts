@@ -57,6 +57,10 @@ export class GenerateReportDto {
   data?: string; // ex: "20/07/2026" — default: `to` formatado
 
   @IsOptional()
+  @IsString()
+  filename?: string; // nome do arquivo baixado — default: RAP-TDS-{ano}.{semana}.docx
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(100)

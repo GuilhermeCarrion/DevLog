@@ -103,6 +103,30 @@ describe('WalletService', () => {
     });
   });
 
+  describe('listSavingsBoxes', () => {
+    it('calcula o saldo de cada caixinha somando aportes e retiradas', async () => {
+      const prisma = {
+        savingsBox: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'b1',
+              name: 'Reserva',
+              color: '#a3e635',
+              entries: [{ amount: 500 }, { amount: 300 }, { amount: -120 }],
+            },
+            { id: 'b2', name: 'Viagem', color: '#f472b6', entries: [] },
+          ]),
+        },
+      } as unknown as PrismaService;
+      const service = new WalletService(prisma);
+
+      const boxes = await service.listSavingsBoxes('u1');
+
+      expect(boxes[0].balance).toBe(680);
+      expect(boxes[1].balance).toBe(0);
+    });
+  });
+
   describe('createInstallment', () => {
     it('divide em N parcelas com ajuste de centavos na última', async () => {
       const created: { amount: number }[] = [];

@@ -49,7 +49,7 @@ function useInvalidateGroups(projectId: string) {
 export function useCreateGroup(projectId: string) {
   const invalidate = useInvalidateGroups(projectId);
   return useMutation({
-    mutationFn: (data: { name: string; color?: string }) =>
+    mutationFn: (data: { name: string; color?: string; priority?: boolean }) =>
       api.post<Group>(`/projects/${projectId}/groups`, data),
     onSuccess: invalidate,
   });
@@ -58,8 +58,25 @@ export function useCreateGroup(projectId: string) {
 export function useUpdateGroup(projectId: string) {
   const invalidate = useInvalidateGroups(projectId);
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: string; name?: string; color?: string }) =>
-      api.patch<Group>(`/groups/${id}`, data),
+    mutationFn: ({
+      id,
+      ...data
+    }: {
+      id: string;
+      name?: string;
+      color?: string;
+      priority?: boolean;
+    }) => api.patch<Group>(`/groups/${id}`, data),
+    onSuccess: invalidate,
+  });
+}
+
+// Reordena os grupos do projeto (envia a lista completa de ids na nova ordem)
+export function useReorderGroups(projectId: string) {
+  const invalidate = useInvalidateGroups(projectId);
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      api.patch<Group[]>(`/projects/${projectId}/groups/reorder`, { ids }),
     onSuccess: invalidate,
   });
 }

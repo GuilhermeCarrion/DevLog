@@ -170,6 +170,8 @@ export interface Group {
   id: string;
   name: string;
   color: string | null;
+  order: number;
+  priority: boolean; // grupo fixado — sempre antes dos demais
   projectId: string;
 }
 
@@ -194,6 +196,7 @@ export interface WorkSession {
   project: { id: string; name: string };
   name: string | null; // nome do plano/sprint (nos templates)
   plannedFor: string | null;
+  dueAt: string | null; // prazo / fim previsto
   startedAt: string | null;
   endedAt: string | null;
   accumulatedSeconds: number; // tempo ativo acumulado (exclui pausas)
@@ -259,6 +262,7 @@ export interface AgendaItem {
 export interface AgendaMonth {
   items: AgendaItem[];
   plannedSessions: WorkSession[];
+  dueSessions: WorkSession[]; // sessões abertas com prazo (dueAt) no mês
   sessions: WorkSession[]; // executadas (startedAt no mês) — visão do que foi feito
 }
 
@@ -316,6 +320,24 @@ export interface InstallmentPlan {
   firstDueDate: string;
   createdAt: string;
   transactions: { id: string; paid: boolean; amount: number; date: string }[];
+}
+
+export interface SavingsEntry {
+  id: string;
+  boxId: string;
+  amount: number; // positivo = aporte, negativo = retirada
+  description: string | null;
+  date: string;
+  createdAt: string;
+}
+
+export interface SavingsBox {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  balance: number; // soma dos lançamentos
+  entries: SavingsEntry[];
 }
 
 export interface WalletSummary {

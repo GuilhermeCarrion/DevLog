@@ -1,0 +1,17 @@
+# Override p/ Codespaces quando a rede bridge entre containers é bloqueada
+# pelo iptables do docker-in-docker (sintoma: ETIMEDOUT em postgres:5432).
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.codespaces.yml up -d
+services:
+  postgres:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+
+  api:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      DATABASE_URL: postgresql://devlog:devlog@localhost:5432/devlog?schema=public
+      DIRECT_URL: postgresql://devlog:devlog@localhost:5432/devlog?schema=public

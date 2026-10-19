@@ -15,11 +15,14 @@ services:
       - devlog_pgdata:/var/lib/postgresql/data
     networks: [devlog]
     # A API só sobe quando o banco responder (evita P1001 na 1ª boot).
+    # -h 127.0.0.1 força TCP: no 1º boot o Postgres roda um servidor temporário
+    # só via socket (initdb) e o pg_isready sem -h marcaria healthy cedo demais.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U devlog"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U devlog -d devlog"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   api:
     # Reusa a imagem multi-stage da atividade anterior (contexto = raiz do monorepo).

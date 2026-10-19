@@ -1,0 +1,39 @@
+name: devlog-ci
+
+# Compose dos testes automáticos (mesma suíte do .github/workflows/ci.yml):
+#   docker compose -f docker-compose.ci.yml up --build \
+#     --abort-on-container-exit --exit-code-from tests
+# O exit code do serviço `tests` vira o status do job de CI.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: devlog
+      POSTGRES_PASSWORD: devlog
+      POSTGRES_DB: devlog
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devlog"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  tests:
+    # Estágio `build` do Dockerfile: tem devDependencies (jest/ts) + código-fonte.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://devlog:devlog@postgres:5432/devlog?schema=public
+      DIRECT_URL: postgresql://devlog:devlog@postgres:5432/devlog?schema=public
+      JWT_SECRET: ci-secret-nao-usar-em-producao
+    working_dir: /app
+    # unitários (sem banco) → migrations → e2e (sobe o app real contra o Postgres)
+    command: >
+      sh -c "npm test --workspace api
+      && (cd apps/api && npx prisma migrate deploy)
+      && npm run test:e2e --workspace api"

@@ -1,3 +1,5 @@
+name: devlog
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -11,6 +13,38 @@ services:
       - "5432:5432"
     volumes:
       - devlog_pgdata:/var/lib/postgresql/data
+    networks: [devlog]
+    # A API só sobe quando o banco responder (evita P1001 na 1ª boot).
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devlog"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    # Reusa a imagem multi-stage da atividade anterior (contexto = raiz do monorepo).
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devlog-api
+    container_name: devlog-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # host do banco = nome do serviço na rede do compose
+      DATABASE_URL: postgresql://devlog:devlog@postgres:5432/devlog?schema=public
+      DIRECT_URL: postgresql://devlog:devlog@postgres:5432/devlog?schema=public
+      JWT_SECRET: troque-por-um-segredo-forte
+      PORT: 3001
+      WEB_ORIGIN: http://localhost:3000
+    ports:
+      - "3001:3001"
+    networks: [devlog]
 
 volumes:
-  devlog_pgdata:
+  devlog_pgdata: # dados do Postgres sobrevivem a recriações do container
+
+networks:
+  devlog: # rede isolada do app; serviços se acham pelo nome

@@ -340,6 +340,14 @@ export interface SavingsBox {
   entries: SavingsEntry[];
 }
 
+// Projeção de um mês (lançado + recorrências ainda não geradas)
+export interface WalletForecastMonth {
+  month: string; // YYYY-MM
+  income: number;
+  expense: number;
+  balance: number;
+}
+
 export interface WalletSummary {
   month: string;
   totalBalance: number; // saldo total guardado (all-time, só pagos)

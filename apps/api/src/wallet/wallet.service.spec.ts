@@ -97,9 +97,55 @@ describe('WalletService', () => {
     });
 
     it('materializa exatamente uma ocorrência quando não existe', async () => {
-      const { service, created } = makeService(0);
+      const { service, created, createMany } = makeService(0);
       await service.listTransactions('u1', { month: '2026-09' });
       expect(created).toHaveLength(1);
+      // corrida entre requests paralelos: o índice único + skipDuplicates
+      // fazem a 2ª inserção virar no-op em vez de duplicar
+      expect(createMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skipDuplicates: true }),
+      );
+    });
+  });
+
+  describe('forecast', () => {
+    it('soma o lançado + recorrências não materializadas, sem gravar nada', async () => {
+      const createMany = jest.fn();
+      const prisma = {
+        recurringRule: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'r1',
+              type: 'EXPENSE',
+              amount: 160,
+              interval: 'MONTHLY',
+              dayOfMonth: 10,
+              startDate: new Date(2026, 0, 10),
+              endDate: null,
+            },
+          ]),
+        },
+        walletTransaction: {
+          groupBy: jest.fn().mockResolvedValue([
+            { type: 'INCOME', _sum: { amount: 1000 } },
+            { type: 'EXPENSE', _sum: { amount: 200 } },
+          ]),
+          count: jest.fn().mockResolvedValue(0), // recorrência ainda não gerada
+          createMany,
+        },
+      } as unknown as PrismaService;
+      const service = new WalletService(prisma);
+
+      const r = await service.forecast('u1', '2026-11', 2);
+
+      expect(r.map((m) => m.month)).toEqual(['2026-11', '2026-12']);
+      expect(r[0]).toEqual({
+        month: '2026-11',
+        income: 1000,
+        expense: 360, // 200 lançado + 160 da academia
+        balance: 640,
+      });
+      expect(createMany).not.toHaveBeenCalled();
     });
   });
 

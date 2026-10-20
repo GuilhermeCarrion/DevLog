@@ -4,6 +4,7 @@ import { Pause, Play, Square, Timer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { FinishSessionDialog } from '@/components/sessions/finish-session-dialog';
+import { TaskSelectList } from '@/components/tasks/task-select-list';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -16,9 +17,11 @@ import {
   useCapture,
   usePauseSession,
   useResumeSession,
+  useUpdateSession,
 } from '@/hooks/use-sessions';
+import { useTasks } from '@/hooks/use-tasks';
 import { formatSeconds } from '@/lib/format';
-import { sessionElapsedSeconds } from '@/lib/types';
+import { sessionElapsedSeconds, type WorkSession } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // Badge fixo do timer: aparece em qualquer tela enquanto há sessão ativa.
@@ -87,6 +90,7 @@ export function ActiveSessionBadge() {
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-96">
+            <SessionTasksPicker session={active} />
             <p className="mb-2 text-sm font-medium">Captura rápida</p>
             <div className="flex flex-col gap-2">
               <Textarea
@@ -152,5 +156,33 @@ export function ActiveSessionBadge() {
         onOpenChange={setFinishOpen}
       />
     </>
+  );
+}
+
+// Tasks da sessão em andamento — marcar/desmarcar salva na hora (o encerrar
+// já vem pré-preenchido com elas). Monta só com o popover aberto.
+function SessionTasksPicker({ session }: { session: WorkSession }) {
+  const { data: tasks } = useTasks(session.projectId);
+  const update = useUpdateSession();
+  const [selected, setSelected] = useState(() => session.tasks.map((t) => t.id));
+
+  if (!tasks?.length) return null;
+
+  function toggle(id: string) {
+    const next = selected.includes(id)
+      ? selected.filter((t) => t !== id)
+      : [...selected, id];
+    setSelected(next);
+    update.mutate(
+      { id: session.id, taskIds: next },
+      { onError: (e) => toast.error(e.message) },
+    );
+  }
+
+  return (
+    <div className="mb-3 flex flex-col gap-1.5 border-b border-border pb-3">
+      <p className="text-sm font-medium">Tasks da sessão</p>
+      <TaskSelectList tasks={tasks} selectedIds={selected} onToggle={toggle} />
+    </div>
   );
 }

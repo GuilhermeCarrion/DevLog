@@ -1,4 +1,5 @@
 import { RecurrenceInterval, TxType } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -9,6 +10,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   Min,
   MinLength,
 } from 'class-validator';
@@ -108,6 +110,19 @@ export class TransactionsQueryDto {
   @IsOptional()
   @IsIn(['true', 'false'])
   paid?: string;
+}
+
+// Projeção dos próximos meses (simulador de parcela)
+export class ForecastQueryDto {
+  @Matches(/^\d{4}-\d{2}$/, { message: 'from deve estar no formato YYYY-MM' })
+  from: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  months?: number;
 }
 
 export class MonthQueryDto {

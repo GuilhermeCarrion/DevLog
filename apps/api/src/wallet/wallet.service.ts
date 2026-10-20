@@ -40,6 +40,11 @@ function addMonths(d: Date, n: number) {
   t.setDate(Math.min(d.getDate(), daysInMonth(t.getFullYear(), t.getMonth())));
   return t;
 }
+function shiftMonth(month: string, delta: number) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
@@ -249,7 +254,34 @@ export class WalletService {
   // Materializa as ocorrências das regras ativas para um mês (idempotente).
   private async ensureRecurringForMonth(userId: string, month: string) {
     const { start, end } = monthRange(month);
-    const rules = await this.prisma.recurringRule.findMany({
+    for (const rule of await this.activeRules(userId, start, end)) {
+      const toCreate = await this.missingOccurrences(rule, start, end);
+      if (!toCreate.length) continue;
+      // skipDuplicates + unique(recurringRuleId, date): se outro request
+      // paralelo já materializou, o banco ignora em vez de duplicar.
+      await this.prisma.walletTransaction.createMany({
+        skipDuplicates: true,
+        data: toCreate.map((date) => {
+          const past = isPastDay(date); // passado nasce pago (imutável)
+          return {
+            userId,
+            type: rule.type,
+            amount: rule.amount,
+            date,
+            description: rule.description,
+            categoryId: rule.categoryId,
+            origin: 'RECURRING' as const,
+            recurringRuleId: rule.id,
+            paid: past,
+            paidAt: past ? date : null,
+          };
+        }),
+      });
+    }
+  }
+
+  private activeRules(userId: string, start: Date, end: Date) {
+    return this.prisma.recurringRule.findMany({
       where: {
         userId,
         active: true,
@@ -257,48 +289,71 @@ export class WalletService {
         OR: [{ endDate: null }, { endDate: { gte: start } }],
       },
     });
-    for (const rule of rules) {
-      const occ = this.occurrencesInMonth(rule, start, end);
-      if (!occ.length) continue;
+  }
 
-      let toCreate: Date[];
-      if (rule.interval === 'WEEKLY') {
-        // semanal: várias por mês → dedup por dia
-        const existing = await this.prisma.walletTransaction.findMany({
-          where: { recurringRuleId: rule.id, date: { gte: start, lt: end } },
-          select: { date: true },
-        });
-        const have = new Set(existing.map((e) => dayKey(e.date)));
-        toCreate = occ.filter((o) => !have.has(dayKey(o)));
-      } else {
-        // mensal/anual: NO MÁXIMO uma por mês. Se já houver qualquer lançamento
-        // desta regra no mês (mesmo com o dia movido pelo usuário), não recria.
-        const count = await this.prisma.walletTransaction.count({
-          where: { recurringRuleId: rule.id, date: { gte: start, lt: end } },
-        });
-        toCreate = count > 0 ? [] : occ;
-      }
-
-      if (toCreate.length) {
-        await this.prisma.walletTransaction.createMany({
-          data: toCreate.map((date) => {
-            const past = isPastDay(date); // passado nasce pago (imutável)
-            return {
-              userId,
-              type: rule.type,
-              amount: rule.amount,
-              date,
-              description: rule.description,
-              categoryId: rule.categoryId,
-              origin: 'RECURRING' as const,
-              recurringRuleId: rule.id,
-              paid: past,
-              paidAt: past ? date : null,
-            };
-          }),
-        });
-      }
+  // Ocorrências da regra no mês que AINDA não viraram lançamento (não grava).
+  private async missingOccurrences(
+    rule: {
+      id: string;
+      interval: RecurrenceInterval;
+      dayOfMonth: number | null;
+      startDate: Date;
+      endDate: Date | null;
+    },
+    start: Date,
+    end: Date,
+  ): Promise<Date[]> {
+    const occ = this.occurrencesInMonth(rule, start, end);
+    if (!occ.length) return [];
+    const where = { recurringRuleId: rule.id, date: { gte: start, lt: end } };
+    if (rule.interval === 'WEEKLY') {
+      // semanal: várias por mês → dedup por dia
+      const existing = await this.prisma.walletTransaction.findMany({
+        where,
+        select: { date: true },
+      });
+      const have = new Set(existing.map((e) => dayKey(e.date)));
+      return occ.filter((o) => !have.has(dayKey(o)));
     }
+    // mensal/anual: NO MÁXIMO uma por mês. Se já houver qualquer lançamento
+    // desta regra no mês (mesmo com o dia movido pelo usuário), não recria.
+    const count = await this.prisma.walletTransaction.count({ where });
+    return count > 0 ? [] : occ;
+  }
+
+  // Projeção de N meses a partir de `from` (YYYY-MM) SEM gravar nada: soma o
+  // que já está lançado + recorrências ainda não materializadas.
+  // ponytail: ~3 queries por regra por mês; agregar em lote se N/regras crescerem.
+  async forecast(userId: string, from: string, months: number) {
+    const out: {
+      month: string;
+      income: number;
+      expense: number;
+      balance: number;
+    }[] = [];
+    for (let i = 0; i < months; i++) {
+      const month = shiftMonth(from, i);
+      const { start, end } = monthRange(month);
+      const agg = await this.prisma.walletTransaction.groupBy({
+        by: ['type'],
+        where: { userId, date: { gte: start, lt: end } },
+        _sum: { amount: true },
+      });
+      let income = agg.find((a) => a.type === 'INCOME')?._sum.amount ?? 0;
+      let expense = agg.find((a) => a.type === 'EXPENSE')?._sum.amount ?? 0;
+      for (const rule of await this.activeRules(userId, start, end)) {
+        const n = (await this.missingOccurrences(rule, start, end)).length;
+        if (rule.type === 'INCOME') income += n * rule.amount;
+        else expense += n * rule.amount;
+      }
+      out.push({
+        month,
+        income: round2(income),
+        expense: round2(expense),
+        balance: round2(income - expense),
+      });
+    }
+    return out;
   }
 
   // Datas de ocorrência de uma regra dentro de um mês [start, end)

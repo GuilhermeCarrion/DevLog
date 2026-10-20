@@ -10,6 +10,7 @@ import type {
   SavingsEntry,
   TxType,
   WalletCategory,
+  WalletForecastMonth,
   WalletSummary,
   WalletTransaction,
 } from '@/lib/types';
@@ -123,6 +124,18 @@ export function useWalletSummary(month: string) {
   return useQuery({
     queryKey: ['wallet', 'summary', month],
     queryFn: () => api.get<WalletSummary>(`/wallet/summary?month=${month}`),
+  });
+}
+
+// Projeção dos próximos `months` meses a partir de `from` (simulador)
+export function useForecast(from: string, months: number, enabled = true) {
+  return useQuery({
+    queryKey: ['wallet', 'forecast', from, months],
+    queryFn: () =>
+      api.get<WalletForecastMonth[]>(
+        `/wallet/forecast?from=${from}&months=${months}`,
+      ),
+    enabled,
   });
 }
 

@@ -16,6 +16,7 @@ import {
   CreateSavingsBoxDto,
   CreateSavingsEntryDto,
   CreateTransactionDto,
+  ForecastQueryDto,
   MonthQueryDto,
   TransactionsQueryDto,
   UpdateInstallmentDto,
@@ -157,6 +158,11 @@ export class WalletController {
   @Get('summary')
   summary(@CurrentUser() u: AuthUser, @Query() q: MonthQueryDto) {
     return this.wallet.summary(u.id, q.month);
+  }
+
+  @Get('forecast')
+  forecast(@CurrentUser() u: AuthUser, @Query() q: ForecastQueryDto) {
+    return this.wallet.forecast(u.id, q.from, q.months ?? 12);
   }
 
   // ----- caixinhas (reserva/economias) -----

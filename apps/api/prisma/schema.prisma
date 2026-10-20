@@ -385,6 +385,9 @@ model WalletTransaction {
   createdAt DateTime @default(now())
 
   @@index([userId, date])
+  // Uma ocorrência por regra por data: o banco barra a corrida de dois requests
+  // paralelos materializando a mesma recorrência (NULLs não conflitam).
+  @@unique([recurringRuleId, date])
 }
 
 // Regra de recorrência (assinaturas, aluguel) — materializa transações

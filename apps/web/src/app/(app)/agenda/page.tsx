@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/layout/page-header';
 import {
   addMonths,
   eachDayOfInterval,
@@ -108,14 +109,13 @@ export default function AgendaPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
-          <p className="text-sm text-muted-foreground">
-            Prazos, entregas, lembretes — com ou sem projeto
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        eyebrow="02 · Agenda"
+        title="Sua agenda,"
+        accent="sem surpresas."
+        description="Prazos, entregas e lembretes — com ou sem projeto."
+        actions={
+          <>
           <Select
             value={filter}
             onValueChange={setFilter}
@@ -135,10 +135,11 @@ export default function AgendaPage() {
             }}
           >
             <Plus className="size-4" />
-            Novo item
+            Novo Item
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         {/* Calendário */}

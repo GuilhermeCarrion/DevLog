@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/layout/page-header';
 import { Download, FileText, History, Sparkles, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -65,15 +66,12 @@ export default function RelatorioPage() {
   if (candidates && projectId) {
     return (
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Revisar relatório
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Ajuste as linhas, selecione as próximas tarefas e puxe as notas das
-            sessões antes de gerar.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="07 · Relatório"
+          title="Revisar"
+          accent="relatório."
+          description="Ajuste as linhas, selecione as próximas tarefas e puxe as notas das sessões antes de gerar."
+        />
         <ReportReview
           projectId={projectId}
           candidates={candidates}
@@ -90,13 +88,12 @@ export default function RelatorioPage() {
   // ----- Modo setup -----
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Relatório</h1>
-        <p className="text-sm text-muted-foreground">
-          Gera o relatório semanal (.docx) do projeto a partir das sessões e
-          tasks no intervalo escolhido.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="07 · Relatório"
+        title="Relatório"
+        accent="semanal."
+        description="Gera o relatório semanal (.docx) do projeto a partir das sessões e tasks no intervalo escolhido."
+      />
 
       <Card>
         <CardHeader className="pb-3">

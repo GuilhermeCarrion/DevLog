@@ -1,39 +1,43 @@
 @import "tailwindcss";
 
 /*
- * Tema DevLog — dark only.
- * Camadas de cinza dão profundidade (sem sombras); verde lima é o único accent.
+ * Tema DevLog — dark only, estética "halftone": preto quase puro, bordas finas
+ * com marcas de registro nos cantos, rótulos mono e pontos que formam imagens.
+ * Verde lima continua sendo o único accent (usado com parcimônia).
  */
 :root {
-  --background: #0e0f12;
-  --foreground: #e7e9ec;
+  color-scheme: dark;
 
-  --card: #16181d;
-  --card-foreground: #e7e9ec;
+  --background: #050506;
+  --foreground: #ececee;
 
-  --popover: #1a1d23;
-  --popover-foreground: #e7e9ec;
+  --card: #0b0b0d;
+  --card-foreground: #ececee;
+
+  --popover: #111114;
+  --popover-foreground: #ececee;
 
   --primary: #a3e635; /* verde lima */
-  --primary-foreground: #0e0f12;
+  --primary-foreground: #070708;
 
-  --secondary: #1e2127;
-  --secondary-foreground: #e7e9ec;
+  --secondary: #141417;
+  --secondary-foreground: #ececee;
 
-  --muted: #1e2127;
-  --muted-foreground: #9aa0aa;
+  --muted: #141417;
+  --muted-foreground: #8b8b93;
 
-  --accent: #22262d;
-  --accent-foreground: #e7e9ec;
+  --accent: #1b1b1f;
+  --accent-foreground: #ececee;
 
   --destructive: #f87171;
-  --destructive-foreground: #0e0f12;
+  --destructive-foreground: #070708;
 
-  --border: #262a31;
-  --input: #262a31;
+  --border: #1f1f24;
+  --border-strong: #34343b; /* marcas de canto / hover */
+  --input: #24242a;
   --ring: #a3e635;
 
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 }
 
 @theme inline {
@@ -63,6 +67,52 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
+  --color-border-strong: var(--border-strong);
+}
+
+/* Marcas de registro nos 4 cantos (quadradinhos), como em prancha técnica */
+@utility frame {
+  --mark: var(--border-strong);
+  background-image:
+    linear-gradient(var(--mark), var(--mark)),
+    linear-gradient(var(--mark), var(--mark)),
+    linear-gradient(var(--mark), var(--mark)),
+    linear-gradient(var(--mark), var(--mark));
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  background-position:
+    3px 3px,
+    calc(100% - 3px) 3px,
+    3px calc(100% - 3px),
+    calc(100% - 3px) calc(100% - 3px);
+}
+
+/* Grade de pontos de fundo (bem sutil) */
+@utility dot-grid {
+  background-image: radial-gradient(
+    circle,
+    rgb(255 255 255 / 0.05) 1px,
+    transparent 1.3px
+  );
+  background-size: 14px 14px;
+}
+
+/* Rótulo técnico: mono, caixa alta, espaçado */
+@utility label-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted-foreground);
+}
+
+/* Destaque editorial em serifa itálica */
+@utility serif-accent {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 body {
@@ -73,6 +123,20 @@ body {
 
 * {
   border-color: var(--border);
+}
+
+::selection {
+  background: rgb(163 230 53 / 0.25);
+}
+
+/* Movimento decorativo some para quem pediu menos animação */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Markdown renderizado (notas) — estilos mínimos, sem plugin de tipografia */
@@ -135,9 +199,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2b3038;
+  background: #26262c;
   border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #363c46;
+  background: #34343b;
 }

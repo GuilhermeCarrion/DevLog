@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/layout/page-header';
 import {
   Clock,
   FolderKanban,
@@ -23,12 +24,12 @@ import type { SummaryProject } from '@/lib/types';
 export default function ConfiguracoesPage() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
-        <p className="text-sm text-muted-foreground">
-          Seus dados de conta e um resumo geral dos seus projetos.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="08 · Configurações"
+        title="Configurações"
+        accent="& perfil."
+        description="Seus dados de conta e um resumo geral dos seus projetos."
+      />
       <MeusDados />
       <Resumo />
     </div>

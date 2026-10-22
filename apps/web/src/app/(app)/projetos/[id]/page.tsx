@@ -10,6 +10,7 @@ import { NotesPanel } from '@/components/notes/notes-panel';
 import { ProjectDialog } from '@/components/projects/project-dialog';
 import { SessionCard } from '@/components/sessions/session-card';
 import { TasksTab } from '@/components/tasks/tasks-tab';
+import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { useProject } from '@/hooks/use-projects';
 import { useSessions } from '@/hooks/use-sessions';
@@ -54,68 +55,64 @@ export default function ProjectPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start gap-3">
-        <Link
-          href="/"
-          className="mt-1 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {project.name}
-            </h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Editar projeto"
-              onClick={() => setEditOpen(true)}
+      <PageHeader
+        eyebrow={
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <ArrowLeft aria-hidden="true" className="size-3" />
+            Projetos
+          </Link>
+        }
+        title={project.name}
+        description={
+          project.description ? (
+            <span className="whitespace-pre-wrap">{project.description}</span>
+          ) : undefined
+        }
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil aria-hidden="true" />
+            Editar Projeto
+          </Button>
+        }
+      >
+        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {project.tags?.map((tag) => (
+            <span
+              key={tag.id}
+              className="inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-xs font-medium"
+              style={{
+                background: `${tag.color}1a`,
+                borderColor: `${tag.color}4d`,
+                color: tag.color,
+              }}
             >
-              <Pencil className="size-4" />
-            </Button>
-          </div>
-          {project.description && (
-            <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-              {project.description}
-            </p>
-          )}
-          {project.tags && project.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {project.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs"
-                  style={{ background: `${tag.color}22`, color: tag.color }}
-                >
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ background: tag.color }}
-                  />
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-          )}
-          <p className="mt-2 text-sm text-muted-foreground">
-            {project._count?.tasks ?? 0} tasks ·{' '}
-            {project._count?.sessions ?? 0} sessões ·{' '}
+              <span aria-hidden="true" className="size-1.5" style={{ background: tag.color }} />
+              {tag.name}
+            </span>
+          ))}
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+            {project._count?.tasks ?? 0} tasks · {project._count?.sessions ?? 0} sessões ·{' '}
             {project._count?.notes ?? 0} notas
-          </p>
+          </span>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Segmented tabs — aba ativa em accent lima */}
-      <div className="flex w-fit gap-1 rounded-lg border border-border bg-card p-1">
+      <div role="tablist" className="flex gap-6 border-b border-border">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
+            role="tab"
+            aria-selected={tab === key}
             onClick={() => router.replace(`/projetos/${id}?tab=${key}`)}
             className={cn(
-              'rounded-md px-4 py-1.5 text-sm transition-colors cursor-pointer',
+              'relative -mb-px border-b-2 px-0.5 pb-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer',
               tab === key
-                ? 'bg-primary/15 font-medium text-primary'
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
             {label}

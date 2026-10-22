@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/layout/page-header';
 import { CalendarPlus, Layers } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -81,18 +82,18 @@ export default function SessoesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Sessões</h1>
-          <p className="text-sm text-muted-foreground">
-            Planejamento semanal e histórico de trabalho
-          </p>
-        </div>
-        <Button onClick={() => setPlanOpen(true)}>
-          <CalendarPlus className="size-4" />
-          Planejar sessão
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="03 · Sessões"
+        title="Sessões"
+        accent="de foco."
+        description="Planejamento semanal e histórico de trabalho."
+        actions={
+          <Button onClick={() => setPlanOpen(true)}>
+            <CalendarPlus aria-hidden="true" className="size-4" />
+            Planejar Sessão
+          </Button>
+        }
+      />
 
       {/* Filtros básicos: projeto + status */}
       <div className="flex flex-wrap items-center gap-2">

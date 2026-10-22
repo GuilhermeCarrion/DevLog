@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm bg-card/90 backdrop-blur-sm">
       <CardHeader>
         <CardTitle>Entrar</CardTitle>
       </CardHeader>

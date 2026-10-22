@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/layout/page-header';
 import { Pencil, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -53,13 +54,12 @@ export default function CalculadoraPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Calculadora</h1>
-        <p className="text-sm text-muted-foreground">
-          Configure valores padrão e custos reutilizáveis. Cada projeto usa isso
-          como base e pode ter seus próprios itens e margem.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="05 · Calculadora"
+        title="Calculadora"
+        accent="de preço."
+        description="Valores padrão e custos reutilizáveis. Cada projeto usa isso como base e pode ter seus próprios itens e margem."
+      />
 
       {/* Defaults */}
       <Card>

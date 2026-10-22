@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -112,9 +113,12 @@ export default function CarteiraPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Cabeçalho + navegação de mês */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Carteira</h1>
-        <div className="flex h-9 items-center rounded-md border border-border">
+      <PageHeader
+        eyebrow="06 · Carteira"
+        title="Carteira"
+        accent="do mês."
+        actions={
+        <div className="flex h-9 items-center rounded-sm border border-border bg-background/70">
           <button
             onClick={() => setMonth((m) => shiftMonth(m, -1))}
             className="rounded-l-md p-2 text-muted-foreground hover:bg-accent cursor-pointer"
@@ -137,7 +141,8 @@ export default function CarteiraPage() {
             <ChevronRight className="size-4" />
           </button>
         </div>
-      </div>
+        }
+      />
 
       <MonthOverview summary={summary} />
 
